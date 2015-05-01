@@ -8,7 +8,8 @@
 
 struct MazeWorldState : public State {
   
-    MazeWorldState(unsigned int xpos, unsigned int ypos, unsigned char direction, const std::list<const Action*>& actions) : pos(pos), actions(actions) {}
+    MazeWorldState(unsigned int xpos, unsigned int ypos, unsigned char direction, const std::list<const Action*>& actions) 
+    : xpos(xpos), ypos(ypos), direction(direction), actions(actions) {}
     //make x and y position  
     unsigned int xpos;
     unsigned int ypos;
@@ -32,7 +33,7 @@ struct MazeWorldAction : public Action{
     bool lessThen(const Action *other) const;
     Action *clone() const { return new MazeWorldAction(*this);}
   
-    operator std::string() const {return (moveDir == 0)? std::string("forward") : (moveDir == 1) ? std::string("right") : std::string("left");} 
+    operator std::string() const {return (movement == 0)? std::string("forward") : (movement == 1) ? std::string("right") : std::string("left");} 
  
     private:
         int movement;
@@ -43,7 +44,7 @@ struct MazeWorld : public World {
   
     //replace max_position with 2d array grid
     //added 2nd param size, assuming always using square grid
-    explicit MazeWorld(unsigned char [][] grid, int xSize, int ySize);
+    explicit MazeWorld();
 
     MazeWorldState* getCurrentState() const;
 
@@ -56,11 +57,9 @@ struct MazeWorld : public World {
     ~MazeWorld();
 
     private:
-        unsigned char [][] grid;
         unsigned int endPosX;
         unsigned int endPosY;
         std::list<const Action*> actions;
         MazeWorldState currentState;
-  
 };
 #endif

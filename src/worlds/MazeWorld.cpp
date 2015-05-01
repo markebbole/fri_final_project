@@ -4,6 +4,19 @@
 
 using namespace std;
 
+static unsigned char grid[10][10] = {
+        {'x','x','x','s','x','x','x','x','e','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'o','o','o','o','o','o','o','o','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'}
+    };
+
 bool MazeWorldState::lessThen(const State* other) const {
     const MazeWorldState *s = dynamic_cast<const MazeWorldState*>(other);
 
@@ -11,11 +24,11 @@ bool MazeWorldState::lessThen(const State* other) const {
         cerr << " MazeWorldState: the states are not comparable" << endl;
 
     if(ypos < s->ypos)
-        return TRUE;
+        return true;
     else if(ypos == s->ypos)
         return xpos < s->ypos;
     else
-        return FALSE;
+        return false;
 }
 
 std::list<const Action*> MazeWorldState::availableActions() const {
@@ -36,14 +49,29 @@ bool MazeWorldAction::lessThen(const Action *other) const {
 
 }
 
-
-MazeWorld::MazeWorld(unsigned char [][] grid, int xSize, int ySize) :
-    grid(grid)
-    endPosX(xSize),
-    endPosY(ySize),
+// unsigned char [10][10] grid, int xSize, int ySize
+MazeWorld::MazeWorld() :
+    endPosX(10),
+    endPosY(10),
     actions(),
     currentState(0, 0, 's', actions) {    //initial state
- 
+
+    // o - open space
+    // x - wall
+    // s - start
+    /* e - end
+    grid[10][10] = {
+        {'x','x','x','s','x','x','x','x','e','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'o','o','o','o','o','o','o','o','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'},
+        {'x','x','x','o','x','x','x','x','o','x'}
+    }; */
     actions.push_back(new MazeWorldAction(0));
     actions.push_back(new MazeWorldAction(1));
     actions.push_back(new MazeWorldAction(2));
@@ -96,9 +124,6 @@ void MazeWorld::applyAction(const Action *a) {
             case 'w': currentState.direction = 's'; break;
         }
     }
-
-    if((currentState.pos != 0 || act->getMovement() >= 0) && (currentState.pos != max_pos || act->getMovement() <= 0))
-        currentState.pos += act->getMovement();
 }
 
 void MazeWorld::reset() {
