@@ -65,5 +65,6 @@ struct MazeWorld : public World {
         std::list<const Action*> actions;
         MazeWorldState currentState;
         unsigned char** grid;
+        int size;
 };
 #endif

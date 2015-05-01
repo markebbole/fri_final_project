@@ -4,7 +4,6 @@
 
 using namespace std;
 
-#define GRID_SIZE 10
 /*static unsigned char grid[GRID_SIZE][GRID_SIZE] = {
     {'x','x','x','s','x','x','x','x','e','x'},
     {'x','x','x','o','x','x','x','x','o','x'},
@@ -51,21 +50,22 @@ bool MazeWorldAction::lessThen(const Action *other) const {
 }
 
 // unsigned char [10][10] grid, int xSize, int ySize
-MazeWorld::MazeWorld(unsigned char** grid) : grid(grid), actions(), currentState(0, 0, 'n', actions) {    //initial state
+MazeWorld::MazeWorld(unsigned char** grid, int size) : grid(grid), size(size), actions(), currentState(0, 0, 'n', actions) {    //initial state
 
-
-    for(unsigned int r = 0; r < GRID_SIZE; ++r) {
-        for(unsigned int c = 0; c < GRID_SIZE; ++c) {
+    //takes in a 2d grid of chars, finds e and s
+    for(unsigned int r = 0; r < size; ++r) {
+        for(unsigned int c = 0; c < size; ++c) {
+            //endPosX and endPosY are the positions of the finish
             if(grid[r][c] == 'e') {
                 endPosX = c;
                 endPosY = r;
             }
-            else if(grid[r][c] == 's') {
+            else if(grid[r][c] == 's') { //set start position, set initial current state
                 startPosX = c;
                 startPosY = r;
                 currentState.xpos = c;
                 currentState.ypos = r;
-                currentState.direction = 's';
+                currentState.direction = 's'; //arbitrary initial direction
             }
         }
     }
@@ -94,11 +94,11 @@ void MazeWorld::applyAction(const Action *a) {
             break;
 
             case 's':
-                if(currentState.ypos < GRID_SIZE-1 && grid[currentState.xpos][currentState.ypos + 1] != 'x')
+                if(currentState.ypos < size-1 && grid[currentState.xpos][currentState.ypos + 1] != 'x')
                     currentState.ypos += 1;
             break;
             case 'e':
-                if(currentState.xpos < GRID_SIZE -1 && grid[currentState.xpos + 1][currentState.ypos] != 'x')
+                if(currentState.xpos < size -1 && grid[currentState.xpos + 1][currentState.ypos] != 'x')
                     currentState.xpos += 1;
             break;
             case 'w':
@@ -125,6 +125,7 @@ void MazeWorld::applyAction(const Action *a) {
     }
 }
 
+//grid no longer static. A grid belongs to the world
 unsigned char** MazeWorld::getGrid() const {
     return this->grid;
 }
