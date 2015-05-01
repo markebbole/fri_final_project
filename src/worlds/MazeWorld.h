@@ -44,7 +44,7 @@ struct MazeWorld : public World {
   
     //replace max_position with 2d array grid
     //added 2nd param size, assuming always using square grid
-    explicit MazeWorld();
+    explicit MazeWorld(unsigned char** grid);
 
     MazeWorldState* getCurrentState() const;
 
@@ -54,13 +54,16 @@ struct MazeWorld : public World {
     //used to get the end coordinates
     unsigned int getEndPosX() const {return endPosY;}
     unsigned int getEndPosY() const {return endPosX;}
-    static unsigned char* getGrid();
+    unsigned char** getGrid() const;
     ~MazeWorld();
 
     private:
         unsigned int endPosX;
         unsigned int endPosY;
+        unsigned int startPosX;
+        unsigned int startPosY;
         std::list<const Action*> actions;
         MazeWorldState currentState;
+        unsigned char** grid;
 };
 #endif

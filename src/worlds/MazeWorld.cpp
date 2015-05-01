@@ -4,7 +4,8 @@
 
 using namespace std;
 
-static unsigned char grid[10][10] = {
+#define GRID_SIZE 10
+/*static unsigned char grid[GRID_SIZE][GRID_SIZE] = {
     {'x','x','x','s','x','x','x','x','e','x'},
     {'x','x','x','o','x','x','x','x','o','x'},
     {'x','x','x','o','x','x','x','x','o','x'},
@@ -15,7 +16,7 @@ static unsigned char grid[10][10] = {
     {'x','x','x','o','x','x','x','x','o','x'},
     {'x','x','x','o','x','x','x','x','o','x'},
     {'x','x','x','o','x','x','x','x','o','x'}
-};
+};*/
 
 bool MazeWorldState::lessThen(const State* other) const {
     const MazeWorldState *s = dynamic_cast<const MazeWorldState*>(other);
@@ -50,28 +51,25 @@ bool MazeWorldAction::lessThen(const Action *other) const {
 }
 
 // unsigned char [10][10] grid, int xSize, int ySize
-MazeWorld::MazeWorld() :
-    endPosX(10),
-    endPosY(10),
-    actions(),
-    currentState(0, 0, 's', actions) {    //initial state
+MazeWorld::MazeWorld(unsigned char** grid) : grid(grid), actions(), currentState(0, 0, 'n', actions) {    //initial state
 
-    // o - open space
-    // x - wall
-    // s - start
-    /* e - end
-    grid[10][10] = {
-        {'x','x','x','s','x','x','x','x','e','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'o','o','o','o','o','o','o','o','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'}
-    }; */
+
+    for(unsigned int r = 0; r < GRID_SIZE; ++r) {
+        for(unsigned int c = 0; c < GRID_SIZE; ++c) {
+            if(grid[r][c] == 'e') {
+                endPosX = c;
+                endPosY = r;
+            }
+            else if(grid[r][c] == 's') {
+                startPosX = c;
+                startPosY = r;
+                currentState.xpos = c;
+                currentState.ypos = r;
+                currentState.direction = 's';
+            }
+        }
+    }
+
     actions.push_back(new MazeWorldAction(0));
     actions.push_back(new MazeWorldAction(1));
     actions.push_back(new MazeWorldAction(2));
@@ -91,19 +89,20 @@ void MazeWorld::applyAction(const Action *a) {
         // Move forward if possible
         switch(currentState.direction) {
             case 'n': 
-                if(currentState.ypos - 1 >= 0 && grid[currentState.xpos][currentState.ypos - 1] != 'x')
+                if(currentState.ypos  > 0 && grid[currentState.xpos][currentState.ypos - 1] != 'x')
                     currentState.ypos -= 1;
             break;
+
             case 's':
-                if(currentState.ypos + 1 < endPosY && grid[currentState.xpos][currentState.ypos + 1] != 'x')
+                if(currentState.ypos < GRID_SIZE-1 && grid[currentState.xpos][currentState.ypos + 1] != 'x')
                     currentState.ypos += 1;
             break;
             case 'e':
-                if(currentState.xpos + 1 < endPosX && grid[currentState.xpos + 1][currentState.ypos] != 'x')
+                if(currentState.xpos < GRID_SIZE -1 && grid[currentState.xpos + 1][currentState.ypos] != 'x')
                     currentState.xpos += 1;
             break;
             case 'w':
-                if(currentState.xpos - 1 >= 0 && grid[currentState.xpos - 1][currentState.ypos] != 'x')
+                if(currentState.xpos  > 0 && grid[currentState.xpos - 1][currentState.ypos] != 'x')
                     currentState.xpos -= 1;
             break;
         }
@@ -126,14 +125,14 @@ void MazeWorld::applyAction(const Action *a) {
     }
 }
 
-static unsigned char* getGrid() {
-    return *grid;
+unsigned char** MazeWorld::getGrid() const {
+    return this->grid;
 }
 
 void MazeWorld::reset() {
-    currentState.xpos = 0;
-    currentState.ypos = 0;
-    currentState.direction = 'n';
+    currentState.xpos = startPosX;
+    currentState.ypos = startPosY;
+    currentState.direction = 's';
 }
 
 MazeWorld::~MazeWorld() {
