@@ -5,17 +5,17 @@
 using namespace std;
 
 static unsigned char grid[10][10] = {
-        {'x','x','x','s','x','x','x','x','e','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'o','o','o','o','o','o','o','o','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'},
-        {'x','x','x','o','x','x','x','x','o','x'}
-    };
+    {'x','x','x','s','x','x','x','x','e','x'},
+    {'x','x','x','o','x','x','x','x','o','x'},
+    {'x','x','x','o','x','x','x','x','o','x'},
+    {'x','x','x','o','x','x','x','x','o','x'},
+    {'x','x','x','o','x','x','x','x','o','x'},
+    {'o','o','o','o','o','o','o','o','o','x'},
+    {'x','x','x','o','x','x','x','x','o','x'},
+    {'x','x','x','o','x','x','x','x','o','x'},
+    {'x','x','x','o','x','x','x','x','o','x'},
+    {'x','x','x','o','x','x','x','x','o','x'}
+};
 
 bool MazeWorldState::lessThen(const State* other) const {
     const MazeWorldState *s = dynamic_cast<const MazeWorldState*>(other);
@@ -126,9 +126,14 @@ void MazeWorld::applyAction(const Action *a) {
     }
 }
 
+static unsigned char* getGrid() {
+    return *grid;
+}
+
 void MazeWorld::reset() {
     currentState.xpos = 0;
     currentState.ypos = 0;
+    currentState.direction = 'n';
 }
 
 MazeWorld::~MazeWorld() {

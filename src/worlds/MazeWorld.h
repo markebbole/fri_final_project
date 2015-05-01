@@ -54,6 +54,7 @@ struct MazeWorld : public World {
     //used to get the end coordinates
     unsigned int getEndPosX() const {return endPosY;}
     unsigned int getEndPosY() const {return endPosX;}
+    static unsigned char* getGrid();
     ~MazeWorld();
 
     private:
