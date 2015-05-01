@@ -44,7 +44,7 @@ struct MazeWorld : public World {
   
     //replace max_position with 2d array grid
     //added 2nd param size, assuming always using square grid
-    explicit MazeWorld(unsigned char** grid);
+    explicit MazeWorld(unsigned char** grid, int size);
 
     MazeWorldState* getCurrentState() const;
 
