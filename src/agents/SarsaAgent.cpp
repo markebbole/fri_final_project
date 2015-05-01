@@ -9,7 +9,10 @@
 #include <algorithm>
 #include <iterator>
 #include <iostream>
+#include "../worlds/MazeWorld.h"
 using namespace std;
+
+void printStatePointer(const State* s);
 
 bool StateComparator::operator()(const State *first, const State* second) const {
     return first->lessThen(second);
@@ -52,7 +55,7 @@ SarsaAgent::SarsaAgent(Problem *problem, World *world, const SarsaAgent::Params&
 
 void SarsaAgent::act() {
     State *s = world->getCurrentState();
-
+    //std::cout << "act: s_clone: " << std::hex << (long)s << std::endl;
     const Action *a = this->chooseAction(s);
 
     world->applyAction(a);
@@ -79,7 +82,7 @@ void SarsaAgent::act() {
 
 const Action* SarsaAgent::chooseAction(const State* s) {
 
-
+    //std::cout << "Choosing action for " << std::hex << (long)s << std::endl;
     list<const Action*> actions =  s->availableActions();
 
     //with a small probability, take a random action
@@ -98,6 +101,11 @@ const Action* SarsaAgent::chooseAction(const State* s) {
     list<pair<const Action*, double> > action_values;
 
     StateActionMap::const_iterator state_value = value.find(s);
+    if(state_value == value.end()) {
+      
+      //std::cout << "new state in map" << std::endl;
+      //printStatePointer(s);
+    }
     const ActionMap &map_to_use = (state_value != value.end())? (state_value->second) : ActionMap();
 
     transform(actions.begin(),actions.end(),back_inserter(action_values),RetriveActionValue(map_to_use));
@@ -157,13 +165,19 @@ void SarsaAgent::learn(const State *s_prime, const Action*a_prime) {
     //it's important we don't store in the map pointers to states passed to this function,
     //because those will be destroyed.
     
-    if(value.find(s) == value.end()) //s is not in the map
-        value.insert(make_pair(s->clone(),ActionMap())); //insert an empty map for this (new) state
-
+    if(value.find(s) == value.end()) {//s is not in the map 
+        //std::cout << "in learn, new state s: " <<  std::endl;
+        //printStatePointer(s);
+        const State* s_clone = s->clone();
+        //std::cout << "s_clone: " << std::hex << (long)s_clone << std::endl;
+        value.insert(make_pair(s_clone,ActionMap())); //insert an empty map for this (new) state
+    }
     //same thing for s_prime
-    if(value.find(s_prime) == value.end()) //s is not in the map
+    if(value.find(s_prime) == value.end()) {//s is not in the map
+        //std::cout << "in learn, new state s prime: " << std::endl;
+        //printStatePointer(s_prime);
         value.insert(make_pair(s_prime->clone(),ActionMap())); //insert an empty map for this (new) state
- 
+    }
 
     double reward = problem->r(s,a,s_prime);
     
@@ -197,11 +211,15 @@ void SarsaAgent::removeValueObserver(ValueObserver *obs) {
 
 SarsaAgent::~SarsaAgent() {
     //empty the map
-
+    //std::cout << "about to delete sam" << std::endl;
     StateActionMap::iterator s_a_m = value.begin();
-    for(; s_a_m != value.end(); ++s_a_m)
+    //std::cout << "got to iterator" << std::endl;
+    for(; s_a_m != value.end(); ++s_a_m) {
+        //printStatePointer(s_a_m->first);
         delete s_a_m->first;
-    
+        //std::cout << "deleted" << std::endl;
+    }
+    //std::cout << "delted sam" << std::endl;
     ActionSet::iterator act = all_actions.begin();
 
     for(; act != all_actions.end(); ++act)
@@ -211,3 +229,7 @@ SarsaAgent::~SarsaAgent() {
       
 }
 
+void printStatePointer(const State* z) {
+  const MazeWorldState* p = (const MazeWorldState*)z;
+  std::cout << "xpos: " << p->xpos << " ypos: " << p->ypos << " direction: " << p->direction << " address: " << std::hex << (long)p << std::endl;
+}

@@ -23,12 +23,19 @@ bool MazeWorldState::lessThen(const State* other) const {
     if(s == NULL)
         cerr << " MazeWorldState: the states are not comparable" << endl;
 
-    if(ypos < s->ypos)
+    if(ypos < s->ypos) {
         return true;
-    else if(ypos == s->ypos)
-        return xpos < s->ypos;
-    else
-        return false;
+    }
+
+    if(ypos == s->ypos && xpos < s->xpos) {
+        return true;
+    }
+
+    if(ypos == s->ypos && xpos == s->xpos && direction < s->direction) {
+        return true;
+    }
+
+    return false;
 }
 
 std::list<const Action*> MazeWorldState::availableActions() const {
@@ -36,6 +43,7 @@ std::list<const Action*> MazeWorldState::availableActions() const {
 }
 
 MazeWorldState *MazeWorldState::clone() const {
+    //std::cout << "CLONING: " << std::hex <<(long)this << std::endl;
     return new MazeWorldState(*this);
 }
 
@@ -55,6 +63,7 @@ MazeWorld::MazeWorld(unsigned char** grid, int size) : grid(grid), size(size), a
     //takes in a 2d grid of chars, finds e and s
     for(unsigned int r = 0; r < size; ++r) {
         for(unsigned int c = 0; c < size; ++c) {
+            //std::cout << grid[r][c] << std::endl;
             //endPosX and endPosY are the positions of the finish
             if(grid[r][c] == 'e') {
                 endPosX = c;
@@ -73,38 +82,59 @@ MazeWorld::MazeWorld(unsigned char** grid, int size) : grid(grid), size(size), a
     actions.push_back(new MazeWorldAction(0));
     actions.push_back(new MazeWorldAction(1));
     actions.push_back(new MazeWorldAction(2));
+    /*for(std::list<const Action*>::iterator p = actions.begin(); p != actions.end(); p++) {
+        std::cout << ((MazeWorldAction*)*p)->getMovement() << std::endl;
+    }*/
 }
 
 MazeWorldState *MazeWorld::getCurrentState() const {
-    return new MazeWorldState(currentState);
+    //std::cout << "GET CURRENT STATE" << std::endl;
+    return currentState.clone();
 }
 
 void MazeWorld::applyAction(const Action *a) {
+    //std::cout << "APPLY ACTION" << std::endl;
     const MazeWorldAction *act = dynamic_cast<const MazeWorldAction*>(a);
-
+    //std::cout << act->getMovement() << std::endl;
     if(act == NULL)
         cerr << "MazeWorld: can't apply an action from another domain" << endl;
 
     if(act->getMovement() == 0) {
         // Move forward if possible
+        //std::cout << currentState.direction << std::endl;
+        //std::cout << "MOVE FORWARD" << std::endl;
+        //std::cout << currentState.xpos << currentState.ypos << size << std::endl;
+        //std::cout << grid[currentState.ypos][currentState.xpos] << std::endl;
         switch(currentState.direction) {
+            
             case 'n': 
-                if(currentState.ypos  > 0 && grid[currentState.xpos][currentState.ypos - 1] != 'x')
+                if(currentState.ypos  > 0 && grid[currentState.ypos-1][currentState.xpos] != 'x') {
+                    //std::cout << "MOVE NORTH" << std::endl;
                     currentState.ypos -= 1;
+                }
             break;
 
             case 's':
-                if(currentState.ypos < size-1 && grid[currentState.xpos][currentState.ypos + 1] != 'x')
+                if(currentState.ypos < size-1 && grid[currentState.ypos+1][currentState.xpos] != 'x') {
+                    //std::cout << "MOVE SOUTH" << std::endl;
                     currentState.ypos += 1;
+                }
             break;
             case 'e':
-                if(currentState.xpos < size -1 && grid[currentState.xpos + 1][currentState.ypos] != 'x')
+                if(currentState.xpos < size -1 && grid[currentState.ypos][currentState.xpos+1] != 'x'){
+                    //std::cout << "MOVE EAST" << std::endl;
                     currentState.xpos += 1;
+                }
             break;
             case 'w':
-                if(currentState.xpos  > 0 && grid[currentState.xpos - 1][currentState.ypos] != 'x')
+                if(currentState.xpos  > 0 && grid[currentState.ypos][currentState.xpos-1] != 'x') {
+                    //std::cout << "MOVE WEST" << std::endl;
                     currentState.xpos -= 1;
+                }
             break;
+            default:
+                std::cout << "ERRRRRROR" << std::endl;
+                break;
         }
     } else if(act->getMovement() == 1) {
         // rotate right
@@ -127,6 +157,7 @@ void MazeWorld::applyAction(const Action *a) {
 
 //grid no longer static. A grid belongs to the world
 unsigned char** MazeWorld::getGrid() const {
+    std::cout << "GET GRID" << std::endl;
     return this->grid;
 }
 
@@ -134,9 +165,11 @@ void MazeWorld::reset() {
     currentState.xpos = startPosX;
     currentState.ypos = startPosY;
     currentState.direction = 's';
+    std::cout << "RESET" << std::endl;
 }
 
 MazeWorld::~MazeWorld() {
+    //std::cout << "GET DECONS" << std::endl;
     list<const Action*>::iterator act = actions.begin();
     for(; act != actions.end(); ++act)
         delete *act;
