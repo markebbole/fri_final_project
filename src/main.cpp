@@ -48,7 +48,7 @@ vector<double> lastState;
 geometry_msgs::Twist lastAction;
 //const turtlesim::Pose::ConstPtr &lastPose;
 //geometry_msgs:
-double rate = 5;
+double rate = .8;
 ros::Time last_command;
 
 double ball_x = 7.;
@@ -125,7 +125,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
   else
     reward = -s_prime[0];
     
-  
+  ROS_INFO_STREAM("vec.x: " << s_prime[0]);
   ROS_INFO_STREAM("reward: " << reward << " " /*<< target_x << " " << target_y*/);
 
   return reward;
@@ -234,13 +234,13 @@ void processDistance(tf::Vector3 vec) {
    //double diff_y = target_y - pose->y;
    
    vector<double> state(1,0.);
-   state[0] = vec[0];
+   state[0] = vec[2];
   // state[1] = target_v - pose->linear_velocity;
    
    //double angle = atan2(diff_y,diff_x);
    
    //state[1] = angles::shortest_angular_distance(pose->theta,angle);
-   
+   ROS_INFO("state: %f", state[0]);
    
    geometry_msgs::Twist action = controller->computeAction(state);
    
@@ -272,9 +272,16 @@ int main (int argc, char** argv)
   ros::Subscriber sub = nh.subscribe ("/nav_kinect/depth_registered/points", 1000, cloud_sub);
   
   //debugging publisher --> can create your own topic and then subscribe to it through rviz
-  ros::Publisher cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("detect_cap/cloud", 10);
+  ros::Publisher cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("linear_robot/cloud", 10);
 
-  cmd_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
+  velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
+  // TODO: pls fix
+  vector<pargo::BoundsPair> bounds;
+  // bounds.push_back(make_pair(-.,50.));
+  bounds.push_back(make_pair(-1.,10.));
+  bounds.push_back(make_pair(-.5, .5));
+   //bounds.push_back(make_pair(-M_PI,M_PI));
+  controller = new ValueLearner(bounds,5);
 
   //refresh rate
   double ros_rate = 5.0;
@@ -301,7 +308,7 @@ int main (int argc, char** argv)
       vg.filter (*cloud_filtered);
 
       
-      ROS_INFO("After voxel grid filter: %i points",(int)cloud_filtered->points.size());
+      //ROS_INFO("After voxel grid filter: %i points",(int)cloud_filtered->points.size());
       
       int max_num_neon = 0;
       
