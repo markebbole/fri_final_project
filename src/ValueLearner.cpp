@@ -31,18 +31,18 @@ ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int 
           gamma(0.998),
           lambda(0.9),
           alpha(0.001) {
-            ROS_INFO_STREAM("The approximator has " << approx->getNumBasisFunctions() << " features");
+        ROS_INFO_STREAM("The approximator has " << approx->getNumBasisFunctions() << " features");
 }
 
 
 geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& state) {
   vector<double> state_action(state.begin(), state.end());
-  state_action.reserve(state_action.size() + 2);
+  state_action.reserve(state_action.size() + 1);
   state_action.push_back(0);
-  state_action.push_back(min_velocity);
+  //state_action.push_back(min_velocity);
   
-  double &linear = state_action[state_action.size() -2];
-  double &angular = state_action[state_action.size() -1];
+  double &linear = state_action[state_action.size() -1];
+  //double &angular = state_action[state_action.size() -1];
   
   vector<double> theta_v(&theta[0],(&theta[0])+theta.size());
   
@@ -51,33 +51,33 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   if(rand() <= epsilon * RAND_MAX) {
     //random action
     double v = rand();
-    action.linear.x = (v /RAND_MAX * (max_velocity - (min_velocity))) + min_velocity;
-    v = rand();
-    action.angular.z = (v /RAND_MAX * (max_velocity - (min_velocity))) + min_velocity;
+    action.linear.x = (v / RAND_MAX) ? .25 : -.25;//(v /RAND_MAX * (max_velocity - (min_velocity))) + min_velocity;
+    //v = rand();
+    //action.angular.z = (v /RAND_MAX * (max_velocity - (min_velocity))) + min_velocity;
     
   }else {
     
     //best action
   
   action.linear.x = linear;
-  action.angular.z = angular;
+  //action.angular.z = angular;
   
   double best_value = approx->value(theta_v,state_action);
   
   
   stringstream values;
   
-  for(linear = 0 ;linear < max_velocity + 0.1; linear += 1) {
+  for(linear = -.25 ;linear < .28; linear += .50) {
 
-    for(angular = min_velocity; angular < max_velocity + 0.1; angular += 1) {
+    //for(angular = min_velocity; angular < max_velocity + 0.1; angular += 1) {
       double value = approx->value(theta_v,state_action);
-      values << linear << " " << angular << ": " << value << " ";
+      values << linear << " " << /*angular <<*/ ": " << value << " ";
       if(value > best_value ) {
         best_value = value;
         action.linear.x = linear;
-        action.angular.z = angular;
+        //action.angular.z = angular;
       }
-    }
+    //}
   }
   
     ROS_INFO_STREAM("action value: " << best_value);
@@ -93,7 +93,7 @@ void ValueLearner::learn(const vector<double>& s,const geometry_msgs::Twist& a ,
   
   vector<double> state_action(s.begin(),s.end());
   state_action.push_back(a.linear.x);
-  state_action.push_back(a.angular.z);
+  //state_action.push_back(a.angular.z);
   
 //   stringstream print_state_act;
 //   copy(state_action.begin(),state_action.end(),ostream_iterator<double>(print_state_act, " "));
@@ -102,7 +102,7 @@ void ValueLearner::learn(const vector<double>& s,const geometry_msgs::Twist& a ,
   
   vector<double> state_action_prime(s_prime.begin(),s_prime.end());
   state_action_prime.push_back(a_prime.linear.x);
-  state_action_prime.push_back(a_prime.angular.z);
+  //state_action_prime.push_back(a_prime.angular.z);
   
   vector<double> phi_s = approx->computeFeatures(state_action);
 //     stringstream print_phi_s;

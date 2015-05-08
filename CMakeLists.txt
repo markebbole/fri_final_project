@@ -5,8 +5,11 @@ project(turtle_controller)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
+  pcl_ros
+  pcl_conversions
+  sensor_msgs
   std_msgs
+  roscpp
   message_generation
 )
 
@@ -67,6 +70,7 @@ find_package(catkin REQUIRED COMPONENTS
   generate_messages(
     DEPENDENCIES
     std_msgs
+    sensor_msgs
   )
 
 ###################################
@@ -117,7 +121,7 @@ add_executable(turtle_controller_tf src/turtle_tf.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(turtle_controller_node
-   ${catkin_LIBRARIES}
+   ${catkin_LIBRARIES} ${PCL_LIBRARIES}
  )
  
  target_link_libraries(turtle_controller_tf
