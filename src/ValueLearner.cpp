@@ -14,14 +14,14 @@ const double epsilon = 0.05;
 
 const double max_velocity = 3.;
 const double min_velocity = -3.;
-
+const double ROBOT_SPEED = 0.2;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
-            state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
-            state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
+  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
+  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
             
-            return state_action_bounds;
+  return state_action_bounds;
 }
 
 ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int order) : 
@@ -31,7 +31,7 @@ ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int 
           gamma(0.998),
           lambda(0.9),
           alpha(0.001) {
-        ROS_INFO_STREAM("The approximator has " << approx->getNumBasisFunctions() << " features");
+  ROS_INFO_STREAM("The approximator has " << approx->getNumBasisFunctions() << " features");
 }
 
 
@@ -40,11 +40,9 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   std::cout << state[0] << std::endl;
   vector<double> state_action(state.begin(), state.end());
   state_action.reserve(state_action.size() + 1);
-  state_action.push_back(-.2);
-  //state_action.push_back(min_velocity);
+  state_action.push_back(-ROBOT_SPEED); //initial action
   
   double &linear = state_action[state_action.size() -1];
-  //double &angular = state_action[state_action.size() -1];
   
   vector<double> theta_v(&theta[0],(&theta[0])+theta.size());
   
@@ -53,37 +51,30 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   if(rand() <= epsilon * RAND_MAX) {
     //random action
     double v = rand();
-    action.linear.x = (v / RAND_MAX) > .5 ? .2 : -.2;//(v /RAND_MAX * (max_velocity - (min_velocity))) + min_velocity;
-    //v = rand();
-    //action.angular.z = (v /RAND_MAX * (max_velocity - (min_velocity))) + min_velocity;
+    action.linear.x = (v / RAND_MAX) > .5 ? ROBOT_SPEED : -ROBOT_SPEED;
     
   }else {
     
     //best action
   
-  action.linear.x = linear;
-  //action.angular.z = angular;
+    action.linear.x = linear;
+    //action.angular.z = angular;
   
-  double best_value = approx->value(theta_v,state_action);
+    double best_value = approx->value(theta_v,state_action);
   
   
-  stringstream values;
-  
-  for(linear = -.2 ;linear < .21; linear += .40) {
-
-    //for(angular = min_velocity; angular < max_velocity + 0.1; angular += 1) {
-      double value = approx->value(theta_v,state_action);
-      values << linear << " " << /*angular <<*/ ": " << value << " ";
-      if(value > best_value ) {
-        best_value = value;
-        action.linear.x = linear;
-        //action.angular.z = angular;
-      }
-    //}
-  }
+    stringstream values;
+    //iterate through all actions, pick best one
+    for(linear = -ROBOT_SPEED ;linear < ROBOT_SPEED+.1; linear += 2*ROBOT_SPEED) {
+        double value = approx->value(theta_v,state_action);
+        values << linear << " " << /*angular <<*/ ": " << value << " ";
+        if(value > best_value ) {
+          best_value = value;
+          action.linear.x = linear;
+        }
+    }
     ROS_INFO_STREAM("chosen action: " << action.linear.x);
     ROS_INFO_STREAM("action value: " << best_value);
-//   ROS_INFO_STREAM(values.str());
   }
   
   return action;
