@@ -37,7 +37,7 @@ LearningController *controller;
 vector<double> lastState;
 geometry_msgs::Twist lastAction;
 
-double rate = .8;
+double rate = 1.;
 ros::Time last_command;
 ros::Time last_cloud_received_at;
 
@@ -98,14 +98,15 @@ void processDistances(vector<tf::Vector3> markers) {
   if((ros::Time::now() - last_command).toSec() < 1./rate) {
     return; 
   }
-  ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
-  ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
+  
   vector<double> state(1,0.);
   state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
    
   geometry_msgs::Twist action = controller->computeAction(state);
    
   if(!lastState.empty()) {
+    ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
+    ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
     double reward = r(lastState,lastAction,state);
     controller->learn(lastState,lastAction,reward,state, action);
   }
