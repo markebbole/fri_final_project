@@ -18,8 +18,8 @@ const double ROBOT_SPEED = 0.2;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
-  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
-  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
+  state_action_bounds.push_back(make_pair(-2*ROBOT_SPEED,2*ROBOT_SPEED));
+  //state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
             
   return state_action_bounds;
 }
