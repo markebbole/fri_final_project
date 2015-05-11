@@ -178,8 +178,8 @@ vector<tf::Vector3> getClusters(PointCloudT::Ptr cloud) {
     //transform each found cluster
 
     try {
-      listener.waitForTransform("base_footprint", "nav_kinect_depth_frame", ros::Time(0), ros::Duration(3.0));
-      listener.lookupTransform("base_footprint", "nav_kinect_depth_frame", ros::Time(0), transform);
+      listener.waitForTransform("base_footprint", "camera_depth_frame", ros::Time(0), ros::Duration(3.0));
+      listener.lookupTransform("base_footprint", "camera_depth_frame", ros::Time(0), transform);
       transf = transform*vec;
     } catch(tf::TransformException &ex) {
       ROS_ERROR("%s", ex.what());
@@ -200,12 +200,12 @@ int main (int argc, char** argv)
   ROS_INFO("Node initialized");
 
   // Create a ROS subscriber for the input point cloud
-  ros::Subscriber sub = nh.subscribe ("/nav_kinect/depth_registered/points", 1000, cloud_sub);
+  ros::Subscriber sub = nh.subscribe ("/camera/depth_registered/points", 1000, cloud_sub);
   
   //debugging publisher --> can create your own topic and then subscribe to it through rviz
   ros::Publisher cloud_pub = nh.advertise<sensor_msgs::PointCloud2>("linear_robot/cloud", 10);
 
-  velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
+  velocity_pub = nh.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity", 1000);
   vector<pargo::BoundsPair> bounds;
   bounds.push_back(make_pair(-1.,10.));
   bounds.push_back(make_pair(-.5, .5));
