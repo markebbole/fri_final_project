@@ -19,8 +19,8 @@ const double ROBOT_ANGULAR_SPEED = 0.3;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
-  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
-  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
+  state_action_bounds.push_back(make_pair(-.5,.5));
+  //state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
             
   return state_action_bounds;
 }

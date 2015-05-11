@@ -88,7 +88,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
   if(s_prime[0] < 2)
     reward = 100;
   else
-    reward = -s_prime[0] - s_prime[1];
+    reward = -s_prime[0];
     
   //ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
@@ -101,8 +101,8 @@ void processDistances(vector<tf::Vector3> markers, bool markerInView) {
     return; 
   }
 
-  vector<double> state(1,0.);
-  
+  vector<double> state(2,0.);
+
   if(!markerInView) {
     state[0] = -10.;
     state[1] = -3.;
@@ -221,8 +221,8 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-10.,10.));
-  bounds.push_back(make_pair(-3., 3.));
+  bounds.push_back(make_pair(-1.,10.));
+  //bounds.push_back(make_pair(-3., 3.));
   //bounds.push_back(make_pair(-.5, .5));
   controller = new ValueLearner(bounds,5);
 
