@@ -12,9 +12,10 @@ using namespace pargo;
 
 const double epsilon = 0.05;
 
-const double max_velocity = 3.;
-const double min_velocity = -3.;
-const double ROBOT_SPEED = 0.2;
+const double max_velocity = 1.;
+const double min_velocity = -1.;
+const double ROBOT_LINEAR_SPEED = 0.2;
+const double ROBOT_ANGULAR_SPEED = 0.3;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
@@ -36,13 +37,14 @@ ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int 
 
 
 geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& state) {
-  std::cout << "COMPUTING ACTION" << std::endl;
-  std::cout << state[0] << std::endl;
+  //std::cout << "COMPUTING ACTION" << std::endl;
+  //std::cout << state[0] << std::endl;
   vector<double> state_action(state.begin(), state.end());
   state_action.reserve(state_action.size() + 1);
-  state_action.push_back(-ROBOT_SPEED); //initial action
-  
-  double &linear = state_action[state_action.size() -1];
+  state_action.push_back(-ROBOT_LINEAR_SPEED); //initial action
+  state_action.push_back(-ROBOT_ANGULAR_SPEED);
+  double &linear = state_action[state_action.size() -2];
+  double &angular = state_action[state_action.size()-1];
   
   vector<double> theta_v(&theta[0],(&theta[0])+theta.size());
   
@@ -51,27 +53,30 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   if(rand() <= epsilon * RAND_MAX) {
     //random action
     double v = rand();
-    action.linear.x = (v / RAND_MAX) > .5 ? ROBOT_SPEED : -ROBOT_SPEED;
-    
+    double v2 = rand();
+    action.linear.x = (v / RAND_MAX) > .5 ? ROBOT_LINEAR_SPEED : -ROBOT_LINEAR_SPEED;
+    action.angular.z = (v2 / RAND_MAX) > .5 ? ROBOT_ANGULAR_SPEED : -ROBOT_ANGULAR_SPEED;
   }else {
     
     //best action
   
     action.linear.x = linear;
-    //action.angular.z = angular;
+    action.angular.z = angular;
   
     double best_value = approx->value(theta_v,state_action);
   
   
     stringstream values;
     //iterate through all actions, pick best one
-    for(linear = -ROBOT_SPEED ;linear < ROBOT_SPEED+.1; linear += 2*ROBOT_SPEED) {
-        double value = approx->value(theta_v,state_action);
-        values << linear << " " << /*angular <<*/ ": " << value << " ";
-        if(value > best_value ) {
-          best_value = value;
-          action.linear.x = linear;
-        }
+    for(angular = -ROBOT_ANGULAR_SPEED; angular < ROBOT_ANGULAR_SPEED + .1; angular += .1;)
+      for(linear = -ROBOT_LINEAR_SPEED ;linear < ROBOT_LINEAR_SPEED+.1; linear += 2*ROBOT_LINEAR_SPEED) {
+          double value = approx->value(theta_v,state_action);
+          values << linear << " " << /*angular <<*/ ": " << value << " ";
+          if(value > best_value ) {
+            best_value = value;
+            action.linear.x = linear;
+          }
+      }
     }
     ROS_INFO_STREAM("chosen action: " << action.linear.x);
     ROS_INFO_STREAM("action value: " << best_value);
@@ -86,7 +91,7 @@ void ValueLearner::learn(const vector<double>& s,const geometry_msgs::Twist& a ,
   
   vector<double> state_action(s.begin(),s.end());
   state_action.push_back(a.linear.x);
-  //state_action.push_back(a.angular.z);
+  state_action.push_back(a.angular.z);
   
 //   stringstream print_state_act;
 //   copy(state_action.begin(),state_action.end(),ostream_iterator<double>(print_state_act, " "));
@@ -95,7 +100,7 @@ void ValueLearner::learn(const vector<double>& s,const geometry_msgs::Twist& a ,
   
   vector<double> state_action_prime(s_prime.begin(),s_prime.end());
   state_action_prime.push_back(a_prime.linear.x);
-  //state_action_prime.push_back(a_prime.angular.z);
+  state_action_prime.push_back(a_prime.angular.z);
   
   vector<double> phi_s = approx->computeFeatures(state_action);
 //     stringstream print_phi_s;

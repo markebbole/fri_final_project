@@ -80,31 +80,45 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in) {
 }
 
 double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>& s_prime) {
+  
+
 
   double reward;
   
   if(s_prime[0] < 2)
     reward = 100;
   else
-    reward = -s_prime[0];
+    reward = -s_prime[0] - s_prime[1];
     
-  ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
+  //ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
   return reward;
 }
 
-void processDistances(vector<tf::Vector3> markers) {
+void processDistances(vector<tf::Vector3> markers, bool markerInView) {
   //wait for the effect of our action
   if((ros::Time::now() - last_command).toSec() < 1./rate) {
     return; 
   }
-  ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
-  ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
+
   vector<double> state(1,0.);
+  
+  if(!markerInView) {
+    state[0] = -10.;
+    state[1] = -3.;
+    double reward = -100.;
+    geometry_msgs::Twist action = controller->computeAction(state);
+    controller->learn(lastState, lastAction, reward, state, action);
+    lastState = state;
+    lastAction = action;
+    last_command = ros::Time::now();
+    velocity_pub.publish(action);
+  }
+
   state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
-   
+  state[1] = atan2(markers[0][2], markers[0][0]);
   geometry_msgs::Twist action = controller->computeAction(state);
-   
+
   if(!lastState.empty()) {
     double reward = r(lastState,lastAction,state);
     controller->learn(lastState,lastAction,reward,state, action);
@@ -207,8 +221,9 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-1.,10.));
-  bounds.push_back(make_pair(-.5, .5));
+  bounds.push_back(make_pair(-10.,10.));
+  bounds.push_back(make_pair(-3., 3.));
+  //bounds.push_back(make_pair(-.5, .5));
   controller = new ValueLearner(bounds,5);
 
   //refresh rate
@@ -236,12 +251,15 @@ int main (int argc, char** argv)
       
       vector<tf::Vector3> clusterCentroids = getClusters(neon_cloud);
 
-      if(clusterCentroids.size() < 1) {
-        ROS_INFO("NOT ENOUGH MARKERS");
-        continue;
-      }
+      /*if(clusterCentroids.size() < 1) {
+        
+        //ROS_INFO("NOT ENOUGH MARKERS");
+        //continue;
+      }*/
 
-      processDistances(clusterCentroids); //right now there's only one marker but there will be more later
+      processDistances(clusterCentroids, clusterCentroids.size() > 0);
+
+      //processDistances(clusterCentroids); //right now there's only one marker but there will be more later
       
       pcl::toROSMsg(*neon_cloud,cloud_ros);
       
