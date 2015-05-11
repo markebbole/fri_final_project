@@ -39,7 +39,7 @@ geometry_msgs::Twist lastAction;
 
 double rate = .8;
 ros::Time last_command;
-
+ros::Time last_cloud_received_at;
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointCloudT;
@@ -55,7 +55,7 @@ sensor_msgs::PointCloud2 cloud_ros;
 void cloud_sub(const sensor_msgs::PointCloud2ConstPtr& msg) {
   //convert the msg to PCL format
   pcl::fromROSMsg (*msg, *cloud);
-
+  last_cloud_received_at = ros::Time::now();
   //state that a new cloud is available
   new_cloud_available_flag = true;
 }
@@ -88,8 +88,8 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
   else
     reward = -s_prime[0];
     
-  ROS_INFO_STREAM("vec.x: " << s_prime[0]);
-  ROS_INFO_STREAM("reward: " << reward);
+  //ROS_INFO_STREAM("vec.x: " << s_prime[0]);
+  //ROS_INFO_STREAM("reward: " << reward);
 
   return reward;
 }
@@ -99,7 +99,8 @@ void processDistances(vector<tf::Vector3> markers) {
   if((ros::Time::now() - last_command).toSec() < 1./rate) {
     return; 
   }
-
+  ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
+  ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
   vector<double> state(1,0.);
   state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
    
@@ -212,7 +213,7 @@ int main (int argc, char** argv)
   controller = new ValueLearner(bounds,5);
 
   //refresh rate
-  double ros_rate = 5.0;
+  double ros_rate = 10.0;
   ros::Rate r(ros_rate);
   
   while (ros::ok())
