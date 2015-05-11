@@ -88,8 +88,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
   else
     reward = -s_prime[0];
     
-  //ROS_INFO_STREAM("vec.x: " << s_prime[0]);
-  //ROS_INFO_STREAM("reward: " << reward);
+  ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
   return reward;
 }

@@ -1,0 +1,35 @@
+commit 7125c4d27e5396663335158b8f5f00846418eaa2
+Author: Mark <mark@ros.(none)>
+Date:   Sun May 10 20:05:22 2015 -0500
+
+    added some print statements so we can look at the timing stuff more easily
+
+commit d58d836a182c18de8b0a77ae1949165ce77779d6
+Author: Mark <mark@ros.(none)>
+Date:   Sun May 10 19:08:02 2015 -0500
+
+    cleaned up more stuff. separated out the crazy clustering code from the main logic.
+
+commit db4c168bc429045688f19d5d2dedf7bb4c4c5bee
+Author: Mark <mark@ros.(none)>
+Date:   Sun May 10 18:18:20 2015 -0500
+
+    cleaned up code so it's actually understandable.
+
+commit 99fba3d566565196af341ee525c899375654ca8c
+Author: Victor Yap <victor.yap@utexas.edu>
+Date:   Fri May 8 15:57:03 2015 -0500
+
+    implemented ros support
+
+commit 0c578a0ce42a6fccc51590758241f09ea65b526b
+Author: Mark <mark@ros.(none)>
+Date:   Fri May 8 13:34:10 2015 -0500
+
+    tried to merge detect cap stuff into turtle stuff. changed CMakeLists
+
+commit 610e2106a7b2c6dbfd5f866ff22f4e531f73d12c
+Author: Mark <mark@ros.(none)>
+Date:   Fri May 8 12:33:56 2015 -0500
+
+    first one
