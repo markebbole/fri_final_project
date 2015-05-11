@@ -208,7 +208,7 @@ int main (int argc, char** argv)
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
   vector<pargo::BoundsPair> bounds;
   bounds.push_back(make_pair(-1.,10.));
-  bounds.push_back(make_pair(-.5, .5));
+  //bounds.push_back(make_pair(-.5, .5));
   controller = new ValueLearner(bounds,5);
 
   //refresh rate

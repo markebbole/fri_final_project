@@ -18,8 +18,8 @@ const double ROBOT_SPEED = 0.2;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
-  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
-  state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
+  //state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
+  state_action_bounds.push_back(make_pair(-(2*ROBOT_SPEED),2*ROBOT_SPEED));
             
   return state_action_bounds;
 }
@@ -51,6 +51,7 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   if(rand() <= epsilon * RAND_MAX) {
     //random action
     double v = rand();
+    ROS_INFO_STREAM("random");
     action.linear.x = (v / RAND_MAX) > .5 ? ROBOT_SPEED : -ROBOT_SPEED;
     
   }else {
