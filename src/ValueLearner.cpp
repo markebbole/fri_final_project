@@ -10,12 +10,12 @@
 using namespace std;
 using namespace pargo;
 
-const double epsilon = 0.25;
+const double epsilon = 0.15;
 
 const double max_velocity = 3.;
 const double min_velocity = -3.;
 const double ROBOT_SPEED = 0.26;
-const double ROBOT_TURN_SPEED = 0.1;
+const double ROBOT_TURN_SPEED = 0.20;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
@@ -148,7 +148,11 @@ void ValueLearner::learn(const vector<double>& s,const geometry_msgs::Twist& a ,
   
   theta = theta + delta * e + alpha * (v_hat_s - (theta * phi_s_v).sum()) * phi_s_v;
   
-  
+  if(r == 100) { //reset to new episode
+    for(int i = 0; i < e.size(); i++) {
+		e[i] = 0.;
+    }
+  }
   
   
 }

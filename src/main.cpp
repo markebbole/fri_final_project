@@ -37,7 +37,7 @@ LearningController *controller;
 vector<double> lastState;
 geometry_msgs::Twist lastAction;
 
-double rate = .5;
+double rate = .9;
 ros::Time last_command;
 ros::Time last_cloud_received_at;
 
@@ -81,13 +81,16 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in) {
 
 double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>& s_prime) {
 
-  double reward;
-  
-  /*if(s_prime[0] < 2)
+  double reward; 
+  if(s_prime[0] < 2) {
     reward = 100;
-  else*/
-    reward = -(s_prime[0] - s[0]);
-    
+  }else{
+	if(s[0] == 9) {
+		reward = 0;
+	} else {
+		reward = -10*(s_prime[0] - s[0]);
+	}
+  }
   ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
   return reward;
@@ -101,8 +104,11 @@ void processDistances(vector<tf::Vector3> markers) {
   vector<double> state(2,0.);
   if(markers.size() == 0) {
 	  state[0] = 9.;
-	  state[1] = -3;
-	  double reward = -100;
+	  if(!lastState.empty())
+		state[1] = lastState[1];
+	  else 
+	    state[1] = 0.;
+	  double reward = -50;
 	  geometry_msgs::Twist action = controller->computeAction(state);
 	  if(!lastState.empty()) {
 		  controller->learn(lastState, lastAction, reward, state, action);
@@ -125,6 +131,12 @@ void processDistances(vector<tf::Vector3> markers) {
     //ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
     double reward = r(lastState,lastAction,state);
     controller->learn(lastState,lastAction,reward,state, action);
+    if(reward == 100) {
+		ROS_INFO_STREAM("done with episode. about to take a nap.");
+		ros::Duration d = ros::Duration(5, 0);
+		d.sleep();
+		ROS_INFO_STREAM("done napping! :)");
+	}
   }
    
   lastState = state;
