@@ -85,14 +85,25 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
 
   double reward;
   
-  if(s_prime[0] < 2)
+  if(s_prime[0] < 1.5)
     reward = 100;
   else
-    reward = -s_prime[0];
+    reward = -(s_prime[0] - s[0]);
     
   //ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
   return reward;
+}
+
+tf::Vector3 getClosestMarker(vector<tf::Vector3> markers) {
+  tf::Vector3 closest = markers[0];
+  for(vector<tf::Vector3>::iterator it = markers.begin() + 1; it != markers.end(); ++it) {
+    tf::Vector3 tmp = *it;
+    if(sqrt(tmp[0]*tmp[0] + tmp[2]*tmp[2]) < sqrt(closest[0]*closest[0] + closest[2]*closest[2])) {
+      closest = tmp;
+    }
+  }
+  return closest;
 }
 
 void processDistances(vector<tf::Vector3> markers, bool markerInView) {
@@ -104,8 +115,8 @@ void processDistances(vector<tf::Vector3> markers, bool markerInView) {
   vector<double> state(2,0.);
 
   if(!markerInView) {
-    state[0] = -10.;
-    state[1] = -3.;
+    state[0] = -1.;
+    state[1] = -4.;
     double reward = -100.;
     geometry_msgs::Twist action = controller->computeAction(state);
     controller->learn(lastState, lastAction, reward, state, action);
@@ -113,10 +124,12 @@ void processDistances(vector<tf::Vector3> markers, bool markerInView) {
     lastAction = action;
     last_command = ros::Time::now();
     velocity_pub.publish(action);
+    return;
   }
 
-  state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
-  state[1] = atan2(markers[0][2], markers[0][0]);
+  tf::Vector3 closestMarker = getClosestMarker(markers);
+  state[0] = closestMarker[2]; //right now we're just looking at the first marker's z distance
+  state[1] = atan2(closestMarker[2], closestMarker[0]);
   geometry_msgs::Twist action = controller->computeAction(state);
 
   if(!lastState.empty()) {
@@ -143,7 +156,7 @@ vector<tf::Vector3> getClusters(PointCloudT::Ptr cloud) {
   seg.setOptimizeCoefficients (true);
   seg.setModelType (pcl::SACMODEL_PLANE);
   seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setMaxIterations (50);
+  seg.setMaxIterations (30);
   seg.setDistanceThreshold (0.1);
     
     
@@ -222,12 +235,12 @@ int main (int argc, char** argv)
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity", 1000);
   vector<pargo::BoundsPair> bounds;
   bounds.push_back(make_pair(-1.,10.));
-  //bounds.push_back(make_pair(-3., 3.));
+  bounds.push_back(make_pair(-4., 4.));
   //bounds.push_back(make_pair(-.5, .5));
-  controller = new ValueLearner(bounds,5);
+  controller = new ValueLearner(bounds,2);
 
   //refresh rate
-  double ros_rate = 10.0;
+  double ros_rate = 8.0;
   ros::Rate r(ros_rate);
   
   while (ros::ok())
