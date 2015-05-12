@@ -37,7 +37,7 @@ LearningController *controller;
 vector<double> lastState;
 geometry_msgs::Twist lastAction;
 
-double rate = 1.;
+double rate = .5;
 ros::Time last_command;
 ros::Time last_cloud_received_at;
 
@@ -83,12 +83,12 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
 
   double reward;
   
-  if(s_prime[0] < 2)
+  /*if(s_prime[0] < 2)
     reward = 100;
-  else
-    reward = -s_prime[0];
+  else*/
+    reward = -(s_prime[0] - s[0]);
     
-  ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
+  //ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
   return reward;
 }
@@ -105,8 +105,8 @@ void processDistances(vector<tf::Vector3> markers) {
   geometry_msgs::Twist action = controller->computeAction(state);
    
   if(!lastState.empty()) {
-    ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
-    ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
+    //ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
+    //ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
     double reward = r(lastState,lastAction,state);
     controller->learn(lastState,lastAction,reward,state, action);
   }
@@ -192,7 +192,6 @@ vector<tf::Vector3> getClusters(PointCloudT::Ptr cloud) {
 
   return centroids;
 }
-
 int main (int argc, char** argv)
 {
   // Initialize ROS
@@ -208,12 +207,12 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-1.,10.));
+  bounds.push_back(make_pair(-.5,5.));
   //bounds.push_back(make_pair(-.5, .5));
-  controller = new ValueLearner(bounds,5);
+  controller = new ValueLearner(bounds,1);
 
   //refresh rate
-  double ros_rate = 10.0;
+  double ros_rate = 12.0;
   ros::Rate r(ros_rate);
   
   while (ros::ok())
