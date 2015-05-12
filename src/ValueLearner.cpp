@@ -10,16 +10,17 @@
 using namespace std;
 using namespace pargo;
 
-const double epsilon = 0.05;
+const double epsilon = 0.25;
 
 const double max_velocity = 3.;
 const double min_velocity = -3.;
-const double ROBOT_SPEED = 0.2;
+const double ROBOT_SPEED = 0.26;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
-  //state_action_bounds.push_back(make_pair(min_velocity,max_velocity));
-  state_action_bounds.push_back(make_pair(-(2*ROBOT_SPEED),2*ROBOT_SPEED));
+
+  state_action_bounds.push_back(make_pair(-2*ROBOT_SPEED,2*ROBOT_SPEED));
+
             
   return state_action_bounds;
 }
@@ -28,9 +29,9 @@ ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int 
           approx(new FourierFA(extendBounds(bounds), FullFourierCoefficientGenerator(extendBounds(bounds).size(),order))), 
           theta(approx->getNumBasisFunctions()),
           e(approx->getNumBasisFunctions()),
-          gamma(0.998),
+          gamma(0.99),
           lambda(0.9),
-          alpha(0.001) {
+          alpha(0.1) {
   ROS_INFO_STREAM("The approximator has " << approx->getNumBasisFunctions() << " features");
 }
 
@@ -69,11 +70,13 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
     for(linear = -ROBOT_SPEED ;linear < ROBOT_SPEED+.1; linear += 2*ROBOT_SPEED) {
         double value = approx->value(theta_v,state_action);
         values << linear << " " << /*angular <<*/ ": " << value << " ";
+        
         if(value > best_value ) {
           best_value = value;
           action.linear.x = linear;
         }
     }
+    ROS_INFO_STREAM(values.str());
     ROS_INFO_STREAM("chosen action: " << action.linear.x);
     ROS_INFO_STREAM("action value: " << best_value);
   }
@@ -119,6 +122,8 @@ void ValueLearner::learn(const vector<double>& s,const geometry_msgs::Twist& a ,
   
   
   theta = theta + delta * e + alpha * (v_hat_s - (theta * phi_s_v).sum()) * phi_s_v;
+  
+  
   
   
 }
