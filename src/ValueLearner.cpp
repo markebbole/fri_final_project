@@ -13,7 +13,7 @@ using namespace pargo;
 const double epsilon = 0.15;
 
 const double ROBOT_LINEAR_SPEED = 0.2;
-const double ROBOT_ANGULAR_SPEED = 0.3;
+const double ROBOT_ANGULAR_SPEED = 0.6;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
@@ -52,6 +52,8 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
     //random action
     double v = rand();
     double v2 = rand();
+    action.linear.x = 0.;
+    action.angular.z = 0.;
     //either pick random forward back or pick random left/right
     if((v / RAND_MAX) > .5) {
       action.linear.x = (v2 / RAND_MAX) > .5 ? ROBOT_LINEAR_SPEED : -ROBOT_LINEAR_SPEED;
@@ -69,35 +71,33 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
     double best_value = approx->value(theta_v,state_action);
   
     stringstream values;
-    linear = 0.;
-    angular = 0.;
-    double best_angular = 0.;
-    bool linearAction = false;
-    //iterate through all actions, pick best one
-    for(angular = -ROBOT_ANGULAR_SPEED; angular < ROBOT_ANGULAR_SPEED + .1; angular += 2*ROBOT_ANGULAR_SPEED) {
-      double value = approx->value(theta_v, state_action);
-      if(value > best_value) {
-        best_value = value;
-        best_angular = angular; //save best rotation in case rotating is the best move
-      }
-    }
-    //reset angular for testing linear action
-    angular = 0.;
-
+    
     for(linear = -ROBOT_LINEAR_SPEED ;linear < ROBOT_LINEAR_SPEED+.1; linear += 2*ROBOT_LINEAR_SPEED) {
       double value = approx->value(theta_v,state_action);
       //values << linear << " " << angular << ": " << value << " ";
       if(value > best_value ) {
         best_value = value;
         action.linear.x = linear;
+      }
+    }
+    double best_linear = action.linear.x;
+    bool angularAction = false;
+    linear = 0.;
+    
+    //iterate through all actions, pick best one
+    for(angular = -ROBOT_ANGULAR_SPEED; angular < ROBOT_ANGULAR_SPEED + .1; angular += 2*ROBOT_ANGULAR_SPEED) {
+      double value = approx->value(theta_v, state_action);
+      if(value > best_value) {
+        best_value = value;
         action.angular.z = angular;
-        linearAction = true;
+        action.linear.x = 0.;
+        angularAction = true;
       }
     }
 
-    if(!linearAction) {
-      action.linear.x = 0.;
-      action.angular.z = best_angular;
+    if(!angularAction) {
+      action.linear.x = best_linear;
+      action.angular.z = 0.;
     }
 
     ROS_INFO_STREAM("chosen action: " << action.linear.x << " " << action.angular.z);

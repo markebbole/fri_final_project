@@ -37,7 +37,7 @@ LearningController *controller;
 vector<double> lastState;
 geometry_msgs::Twist lastAction;
 
-double rate = .8;
+double rate = .6;
 ros::Time last_command;
 ros::Time last_cloud_received_at;
 
@@ -90,7 +90,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
   else
     reward = -(s_prime[0] - s[0]);
     
-  //ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
+  ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
   return reward;
 }
@@ -143,21 +143,17 @@ void processDistances(vector<tf::Vector3> markers, bool markerInView) {
   last_command = ros::Time::now();
   velocity_pub.publish(action);
 }
+pcl::SACSegmentation<PointT> seg;
 
 
 vector<tf::Vector3> getClusters(PointCloudT::Ptr cloud) {
   vector<tf::Vector3> centroids;
   //------------euclidean clustering---------
   // Create the segmentation object for the planar model and set all the parameters
-  pcl::SACSegmentation<PointT> seg;
   pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
   pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
   pcl::PointCloud<PointT>::Ptr cloud_plane (new pcl::PointCloud<PointT> ());
-  seg.setOptimizeCoefficients (true);
-  seg.setModelType (pcl::SACMODEL_PLANE);
-  seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setMaxIterations (30);
-  seg.setDistanceThreshold (0.1);
+ 
     
     
   if(cloud->points.size() < 20) {
@@ -171,9 +167,9 @@ vector<tf::Vector3> getClusters(PointCloudT::Ptr cloud) {
 
   std::vector<pcl::PointIndices> cluster_indices;
   pcl::EuclideanClusterExtraction<PointT> ec;
-  ec.setClusterTolerance (0.02); // 2cm
+  ec.setClusterTolerance (0.01); // 2cm
   ec.setMinClusterSize (20);
-  ec.setMaxClusterSize (2800);
+  ec.setMaxClusterSize (2000);
   ec.setSearchMethod (tree);
   ec.setInputCloud (cloud);
   ec.extract (cluster_indices);
@@ -234,13 +230,18 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-1.,10.));
-  bounds.push_back(make_pair(-4., 4.));
+  bounds.push_back(make_pair(-5.,10.));
+  bounds.push_back(make_pair(-5., 5.));
   //bounds.push_back(make_pair(-.5, .5));
   controller = new ValueLearner(bounds,2);
-
+  
+  seg.setOptimizeCoefficients (true);
+  seg.setModelType (pcl::SACMODEL_PLANE);
+  seg.setMethodType (pcl::SAC_RANSAC);
+  seg.setMaxIterations (30);
+  seg.setDistanceThreshold (0.1);
   //refresh rate
-  double ros_rate = 8.0;
+  double ros_rate = 2.0;
   ros::Rate r(ros_rate);
   
   while (ros::ok())
@@ -256,7 +257,7 @@ int main (int argc, char** argv)
       pcl::VoxelGrid<PointT> vg;
       pcl::PointCloud<PointT>::Ptr cloud_filtered (new pcl::PointCloud<PointT>);
       vg.setInputCloud (cloud);
-      vg.setLeafSize (0.01f, 0.01f, 0.01f);
+      vg.setLeafSize (0.005f, 0.005f, 0.005f);
       vg.filter (*cloud_filtered);
       
       //Send the filtered point cloud to be processed in order to get the neon blob
