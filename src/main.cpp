@@ -88,7 +88,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
   else*/
     reward = -(s_prime[0] - s[0]);
     
-  //ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
+  ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
 
   return reward;
 }
@@ -98,10 +98,26 @@ void processDistances(vector<tf::Vector3> markers) {
   if((ros::Time::now() - last_command).toSec() < 1./rate) {
     return; 
   }
+  vector<double> state(2,0.);
+  if(markers.size() == 0) {
+	  state[0] = 9.;
+	  state[1] = -3;
+	  double reward = -100;
+	  geometry_msgs::Twist action = controller->computeAction(state);
+	  if(!lastState.empty()) {
+		  controller->learn(lastState, lastAction, reward, state, action);
+	  }
+	  lastState = state;
+	  lastAction = action;
+	  last_command = ros::Time::now();
+	  velocity_pub.publish(action);
+	  return;
+  }
   
-  vector<double> state(1,0.);
+  
+  
   state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
-   
+  state[1] = atan2(markers[0][0], markers[0][2]);
   geometry_msgs::Twist action = controller->computeAction(state);
    
   if(!lastState.empty()) {
@@ -207,9 +223,9 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-.5,5.));
-  //bounds.push_back(make_pair(-.5, .5));
-  controller = new ValueLearner(bounds,1);
+  bounds.push_back(make_pair(-1.,10.));
+  bounds.push_back(make_pair(-4., 4.));
+  controller = new ValueLearner(bounds,2);
 
   //refresh rate
   double ros_rate = 12.0;
@@ -238,7 +254,7 @@ int main (int argc, char** argv)
 
       if(clusterCentroids.size() < 1) {
         ROS_INFO("NOT ENOUGH MARKERS");
-        continue;
+        //continue;
       }
 
       processDistances(clusterCentroids); //right now there's only one marker but there will be more later
