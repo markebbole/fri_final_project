@@ -38,9 +38,9 @@ ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int 
 }
 
 
-geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& state) {
-  std::cout << "COMPUTING ACTION" << std::endl;
-  std::cout << state[0] << std::endl;
+geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& state, Node* currentPosition) {
+  //std::cout << "COMPUTING ACTION" << std::endl;
+  //std::cout << state[0] << std::endl;
   vector<double> state_action(state.begin(), state.end());
   state_action.reserve(state_action.size() + 2);
   state_action.push_back(-ROBOT_SPEED); //initial action
@@ -51,16 +51,23 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   vector<double> theta_v(&theta[0],(&theta[0])+theta.size());
   
   geometry_msgs::Twist action;
-  
+  bool noMarkers = true;
+  for(int i = 0; i < state.size()/2; i++) {
+    if(state[i] != NULL) {
+      noMarkers = false;
+      break;
+    }
+  }
+  std::cout << "are there no markers: " << noMarkers << std::endl;
   if(rand() <= epsilon * RAND_MAX) {
     //random action
     double v = rand();
     double v2 = rand();
-    if((v / RAND_MAX) > .5) {
-		action.linear.x = (v2 / RAND_MAX) > .5 ? ROBOT_SPEED : -ROBOT_SPEED;
-	} else {
-		action.angular.z = (v2 / RAND_MAX) > .5 ? ROBOT_TURN_SPEED : -ROBOT_TURN_SPEED;
-	}
+    if((v / RAND_MAX) > .5 && !noMarkers) {
+  		action.linear.x = (v2 / RAND_MAX) > .5 ? ROBOT_SPEED : -ROBOT_SPEED;
+  	} else {
+  		action.angular.z = (v2 / RAND_MAX) > .5 ? ROBOT_TURN_SPEED : -ROBOT_TURN_SPEED;
+  	}
     
   }else {
     
@@ -69,6 +76,7 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
     action.linear.x = linear;
     action.angular.z = angular;
   
+
     double best_value = approx->value(theta_v,state_action);
   
     bool angularMove = false;
@@ -86,6 +94,14 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
         }
     }
     linear = 0.;
+    if(noMarkers) {
+      action.linear.x = 0.;
+      linear = 0.;
+      angular = -ROBOT_TURN_SPEED;
+      best_value = approx->value(theta_v, state_action);
+      angularMove = true;
+    }
+
     for(angular = -ROBOT_TURN_SPEED ;angular < ROBOT_TURN_SPEED+.1; angular += 2*ROBOT_TURN_SPEED) {
         double value = approx->value(theta_v,state_action);
         values << linear << " " << angular << ": " << value << " ";
@@ -99,9 +115,10 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
     }
     
     if(!angularMove) {
-		action.linear.x = bestLinear;
-		action.angular.z = 0.;
-	}
+		  action.linear.x = bestLinear;
+		  action.angular.z = 0.;
+	  }
+
     ROS_INFO_STREAM(values.str());
     ROS_INFO_STREAM("chosen action: " << action.linear.x << " " << action.angular.z);
     ROS_INFO_STREAM("action value: " << best_value);

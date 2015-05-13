@@ -47,6 +47,9 @@ typedef pcl::PointCloud<PointT> PointCloudT;
 
 bool new_cloud_available_flag = false;
 
+Node* currentPosition;
+Node* endPosition;
+
 // General point cloud to store the whole image
 PointCloudT::Ptr cloud (new PointCloudT);
 
@@ -61,7 +64,7 @@ void cloud_sub(const sensor_msgs::PointCloud2ConstPtr& msg) {
   new_cloud_available_flag = true;
 }
 
-PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, vector<int> colors) {
+PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
   int THRESHOLD_H = 15;
   int THRESHOLD_S = 20;
   int THRESHOLD_V = 20;
@@ -71,6 +74,12 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, vector<int> colors) {
   //Point Cloud to store out neon cap
   PointCloudT::Ptr temp_neon_cloud (new PointCloudT);
   unsigned int r, g, b;
+
+  int col = color;
+  int filterR = (col >> 16);
+  int filterG = (col >> 8) & 0xff;
+  int filterB = col & 0xff;
+
   for (int i = 0; i < in->points.size(); i++) {
       r = in->points[i].r;
       g = in->points[i].g;
@@ -80,24 +89,15 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, vector<int> colors) {
       my_rgb.g = g;
       my_rgb.b = b;
 
-      for(int j = 0; j < colors.size(); j++) {
+      test_rgb.r = filterR;
+      test_rgb.g = filterG;
+      test_rgb.b = filterB;
         
-
-        int col = colors[j];
-        int filterR = (col >> 16);
-        int filterG = (col >> 8) & 0xff;
-        int filterB = col & 0xff;
-
-        test_rgb.r = filterR;
-        test_rgb.g = filterG;
-        test_rgb.b = filterB;
-        
-        hsv c1 = rgb2hsv(my_rgb);
-        hsv c2 = rgb2hsv(test_rgb);
+      hsv c1 = rgb2hsv(my_rgb);
+      hsv c2 = rgb2hsv(test_rgb);
         // Look for mostly neon value points
-        if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
-          temp_neon_cloud->push_back(in->points[i]);
-        }
+      if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
+        temp_neon_cloud->push_back(in->points[i]);
       }
       
   }
@@ -127,30 +127,17 @@ void processDistances(vector<tf::Vector3> markers) {
   if((ros::Time::now() - last_command).toSec() < 1./rate) {
     return; 
   }
-  vector<double> state(2,0.);
-  if(markers.size() == 0) {
-	  state[0] = 9.;
-	  if(!lastState.empty())
-		state[1] = lastState[1];
-	  else 
-	    state[1] = 0.;
-	  double reward = -50;
-	  geometry_msgs::Twist action = controller->computeAction(state);
-	  if(!lastState.empty()) {
-		  controller->learn(lastState, lastAction, reward, state, action);
-	  }
-	  lastState = state;
-	  lastAction = action;
-	  last_command = ros::Time::now();
-	  velocity_pub.publish(action);
-	  return;
+
+  vector<double> state(8,0.);
+  
+  for(int i = 0; i < markers.size(); i++) {
+    state[i] = markers[i] == NULL ? -1 : markers[i][0]; //distance
+    state[i+4] = markers[i] == NULL ? -3.5 : atan2(markers[i][0], markers[i][2]); //angle
   }
-  
-  
-  
-  state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
-  state[1] = atan2(markers[0][0], markers[0][2]);
-  geometry_msgs::Twist action = controller->computeAction(state);
+
+  //state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
+  //state[1] = atan2(markers[0][0], markers[0][2]);
+  geometry_msgs::Twist action = controller->computeAction(state, currentPosition);
    
   if(!lastState.empty()) {
     //ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
@@ -173,81 +160,108 @@ void processDistances(vector<tf::Vector3> markers) {
 }
 
 
-vector<tf::Vector3> getClusters(PointCloudT::Ptr cloud) {
+vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
+  
   vector<tf::Vector3> centroids;
-  //------------euclidean clustering---------
-  // Create the segmentation object for the planar model and set all the parameters
-  pcl::SACSegmentation<PointT> seg;
-  pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-  pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
-  pcl::PointCloud<PointT>::Ptr cloud_plane (new pcl::PointCloud<PointT> ());
-  seg.setOptimizeCoefficients (true);
-  seg.setModelType (pcl::SACMODEL_PLANE);
-  seg.setMethodType (pcl::SAC_RANSAC);
-  seg.setMaxIterations (50);
-  seg.setDistanceThreshold (0.1);
+  for(int i = 0; i < clouds.size(); i++) {
+    PointCloudT::Ptr cloud = clouds[i];
     
-    
-  if(cloud->points.size() < 20) {
-    ROS_INFO("NOT ENOUGH POINTS");
-    return centroids;
-  }
-
-  // Creating the KdTree object for the search method of the extraction
-  pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
-  tree->setInputCloud (cloud);
-
-  std::vector<pcl::PointIndices> cluster_indices;
-  pcl::EuclideanClusterExtraction<PointT> ec;
-  ec.setClusterTolerance (0.02); // 2cm
-  ec.setMinClusterSize (20);
-  ec.setMaxClusterSize (2800);
-  ec.setSearchMethod (tree);
-  ec.setInputCloud (cloud);
-  ec.extract (cluster_indices);
-
-  /*  if(cluster_indices.size() < 1) {
-    ROS_INFO("NOT ENOUGH HATS!!!");
-    continue;
-  }*/
-
-  tf::TransformListener listener;
-  for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end(); ++it)
-  {
-    pcl::PointCloud<PointT>::Ptr cloud_cluster (new pcl::PointCloud<PointT>);
-    for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit)
-      cloud_cluster->points.push_back (cloud->points[*pit]); 
-    cloud_cluster->width = cloud_cluster->points.size ();
-    cloud_cluster->height = 1;
-    cloud_cluster->is_dense = true;
-    //std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
-
-    //compute a centroid for each found cluster.
-    Eigen::Vector4f centroid;
-    pcl::compute3DCentroid(*cloud_cluster, centroid);
-    
-    tf::StampedTransform transform;
-    tf::Vector3 transf;
-    tf::Vector3 vec(centroid(0), centroid(1), centroid(2));
-    
-    //transform each found cluster
-
-    try {
-      listener.waitForTransform("base_footprint", "nav_kinect_depth_frame", ros::Time(0), ros::Duration(3.0));
-      listener.lookupTransform("base_footprint", "nav_kinect_depth_frame", ros::Time(0), transform);
-      transf = transform*vec;
-    } catch(tf::TransformException &ex) {
-      ROS_ERROR("%s", ex.what());
-      ros::Duration(1.0).sleep();
+    //------------euclidean clustering---------
+    // Create the segmentation object for the planar model and set all the parameters
+    pcl::SACSegmentation<PointT> seg;
+    pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+    pcl::PointCloud<PointT>::Ptr cloud_plane (new pcl::PointCloud<PointT> ());
+    seg.setOptimizeCoefficients (true);
+    seg.setModelType (pcl::SACMODEL_PLANE);
+    seg.setMethodType (pcl::SAC_RANSAC);
+    seg.setMaxIterations (50);
+    seg.setDistanceThreshold (0.1);
+      
+      
+    if(cloud->points.size() < 20) {
+      ROS_INFO("NOT ENOUGH POINTS");
+      centroids.push_back(NULL);
       continue;
+      //return centroids;
     }
-    centroids.push_back(transf);
-  }
 
+    // Creating the KdTree object for the search method of the extraction
+    pcl::search::KdTree<PointT>::Ptr tree (new pcl::search::KdTree<PointT>);
+    tree->setInputCloud (cloud);
+
+    std::vector<pcl::PointIndices> cluster_indices;
+    pcl::EuclideanClusterExtraction<PointT> ec;
+    ec.setClusterTolerance (0.02); // 2cm
+    ec.setMinClusterSize (20);
+    ec.setMaxClusterSize (2800);
+    ec.setSearchMethod (tree);
+    ec.setInputCloud (cloud);
+    ec.extract (cluster_indices);
+
+    /*  if(cluster_indices.size() < 1) {
+      ROS_INFO("NOT ENOUGH HATS!!!");
+      continue;
+    }*/
+
+    tf::TransformListener listener;
+    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.begin()+1;/*cluster_indices.end();*/ ++it)
+    {
+      pcl::PointCloud<PointT>::Ptr cloud_cluster (new pcl::PointCloud<PointT>);
+      for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit)
+        cloud_cluster->points.push_back (cloud->points[*pit]); 
+      cloud_cluster->width = cloud_cluster->points.size ();
+      cloud_cluster->height = 1;
+      cloud_cluster->is_dense = true;
+      //std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+
+      //compute a centroid for each found cluster.
+      Eigen::Vector4f centroid;
+      pcl::compute3DCentroid(*cloud_cluster, centroid);
+      
+      tf::StampedTransform transform;
+      tf::Vector3 transf;
+      tf::Vector3 vec(centroid(0), centroid(1), centroid(2));
+      
+      //transform each found cluster
+
+      try {
+        listener.waitForTransform("base_footprint", "nav_kinect_depth_frame", ros::Time(0), ros::Duration(3.0));
+        listener.lookupTransform("base_footprint", "nav_kinect_depth_frame", ros::Time(0), transform);
+        transf = transform*vec;
+      } catch(tf::TransformException &ex) {
+        ROS_ERROR("%s", ex.what());
+        ros::Duration(1.0).sleep();
+        continue;
+      }
+      centroids.push_back(transf);
+    }
+
+  }
   return centroids;
+  
 }
 int main (int argc, char** argv)
 {
+
+  Node* p = new Node(-100, 0xff9900, 0);
+  Node* p2 = new Node(100, 0xff0000, 1);
+  Node* p3 = new Node(-100, 0x0000ff, 2);
+  Node* p4 = new Node(500, 0x00ff00, 3);
+
+  p->addNeighbor(p2);
+
+  p2->addNeighbor(p);
+  p2->addNeighbor(p4);
+  p2->addNeighbor(p3);
+
+  p3->addNeighbor(p2);
+
+  p4->addNeighbor(p2);
+  
+  currentPosition = p;
+  endPosition = p4;
+
   // Initialize ROS
   ros::init (argc, argv, "linear_robot");
   ros::NodeHandle nh;
@@ -261,8 +275,15 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-1.,10.));
-  bounds.push_back(make_pair(-4., 4.));
+  bounds.push_back(make_pair(-2., 10.); //orange
+  bounds.push_back(make_pair(-2., 10.); //red
+  bounds.push_back(make_pair(-2., 10.); //blue
+  bounds.push_back(make_pair(-2., 10.); //green
+  bounds.push_back(make_pair(-5., 5.));
+  bounds.push_back(make_pair(-5., 5.));
+  bounds.push_back(make_pair(-5., 5.));
+  bounds.push_back(make_pair(-5., 5.));
+    
   controller = new ValueLearner(bounds,2);
 
   //refresh rate
@@ -285,15 +306,42 @@ int main (int argc, char** argv)
       vg.setLeafSize (0.01f, 0.01f, 0.01f);
       vg.filter (*cloud_filtered);
       
-      //Send the filtered point cloud to be processed in order to get the neon blob
-      PointCloudT::Ptr neon_cloud = computeNeonVoxels(cloud_filtered);
-      
-      vector<tf::Vector3> clusterCentroids = getClusters(neon_cloud);
 
-      if(clusterCentroids.size() < 1) {
+      vector<PointerCloudT::Ptr> clouds;
+      /*for(int i = 0; i < currentPosition.neighbors.size(); i++) {
+        PointCloudT::Ptr tmp = computeNeonVoxels(currentPosition.neighbors[i], 
+          currentPosition.neighbors[i].color);
+
+        clouds.push_back(tmp);
+      }*/
+      PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff9900);
+      PointCloudT::Ptr red_cloud = computeNeonVoxels(cloud_filtered, 0xff0000);
+      PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0x0000ff);
+      PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00);
+
+      clouds.push_back(orange_cloud);
+      clouds.push_back(red_cloud);
+      clouds.push_back(blue_cloud);
+      clouds.push_back(green_cloud);
+
+      vector<tf::Vector3> clusterCentroids = getClusters(clouds);
+      //currentPosition.neighbors
+      for(int i = 0; i < clusterCentroids.size(); i++) {
+        bool found = false;
+        for(int j = 0; j < currentPosition.neighbors.size(); j++) {
+          if(currentPosition.neighbors[j].index == i) {
+            found = true;
+            break;
+          }
+        }
+        if(!found) {
+          clusterCentroids[i] = NULL;
+        }
+      }
+      /*if(clusterCentroids.size() < 1) {
         ROS_INFO("NOT ENOUGH MARKERS");
         //continue;
-      }
+      }*/
 
       processDistances(clusterCentroids); //right now there's only one marker but there will be more later
       
