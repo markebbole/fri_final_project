@@ -306,7 +306,7 @@ int main (int argc, char** argv)
       vg.setLeafSize (0.01f, 0.01f, 0.01f);
       vg.filter (*cloud_filtered);
       
-
+      
       vector<PointerCloudT::Ptr> clouds;
       /*for(int i = 0; i < currentPosition.neighbors.size(); i++) {
         PointCloudT::Ptr tmp = computeNeonVoxels(currentPosition.neighbors[i], 
