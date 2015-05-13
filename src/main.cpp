@@ -26,6 +26,7 @@
 #include <cmath>
 #include <iostream>
 #include <cstdio>
+#include "ColorConversion.h"
 
 using namespace std;
 
@@ -60,23 +61,48 @@ void cloud_sub(const sensor_msgs::PointCloud2ConstPtr& msg) {
   new_cloud_available_flag = true;
 }
 
-PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in) {
-  int total_neon = 0;
-    
+PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, vector<int> colors) {
+  int THRESHOLD_H = 15;
+  int THRESHOLD_S = 20;
+  int THRESHOLD_V = 20;
+
+  rgb my_rgb;
+  rgb test_rgb;
   //Point Cloud to store out neon cap
   PointCloudT::Ptr temp_neon_cloud (new PointCloudT);
-    unsigned int r, g, b;
-    for (int i = 0; i < in->points.size(); i++) {
-        r = in->points[i].r;
-        g = in->points[i].g;
-        b = in->points[i].b;
+  unsigned int r, g, b;
+  for (int i = 0; i < in->points.size(); i++) {
+      r = in->points[i].r;
+      g = in->points[i].g;
+      b = in->points[i].b;
+      
+      my_rgb.r = r;
+      my_rgb.g = g;
+      my_rgb.b = b;
+
+      for(int j = 0; j < colors.size(); j++) {
+        
+
+        int col = colors[j];
+        int filterR = (col >> 16);
+        int filterG = (col >> 8) & 0xff;
+        int filterB = col & 0xff;
+
+        test_rgb.r = filterR;
+        test_rgb.g = filterG;
+        test_rgb.b = filterB;
+        
+        hsv c1 = rgb2hsv(my_rgb);
+        hsv c2 = rgb2hsv(test_rgb);
         // Look for mostly neon value points
-        if (g > 150 && (r + b) < 220) {
+        if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
           temp_neon_cloud->push_back(in->points[i]);
         }
-    }
+      }
+      
+  }
 
-    return temp_neon_cloud;
+  return temp_neon_cloud;
 }
 
 double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>& s_prime) {
