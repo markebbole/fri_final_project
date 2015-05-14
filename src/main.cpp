@@ -69,10 +69,12 @@ void cloud_sub(const sensor_msgs::PointCloud2ConstPtr& msg) {
 }
 
 PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
-  ROS_INFO("computing filter for color: %d", color);
-  int THRESHOLD_H = 15;
-  int THRESHOLD_S = 20;
-  int THRESHOLD_V = 20;
+
+  ROS_INFO("computing filter for color: %02X", color);
+  ROS_INFO("there are %d points", (int)in->points.size());
+  int THRESHOLD_H = 20;
+  int THRESHOLD_S = 50;
+  int THRESHOLD_V = 50;
   int count = 0; //for debugging purposes
   rgb my_rgb;
   rgb test_rgb;
@@ -93,7 +95,7 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
       r = in->points[i].r;
       g = in->points[i].g;
       b = in->points[i].b;
-      
+      //ROS_INFO("%d %d %d", r, g, b);
       my_rgb.r = r;
       my_rgb.g = g;
       my_rgb.b = b;
@@ -101,7 +103,9 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
       hsv c1 = rgb2hsv(my_rgb);
       hsv c2 = rgb2hsv(test_rgb);
         // Look for mostly neon value points
-      if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
+     if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
+	  
+      //if(abs(r - filterR) < 20 && abs(g - filterG) < 20 && abs(b < filterB) < 20) {
         temp_neon_cloud->push_back(in->points[i]);
         ++count;
       }
@@ -230,7 +234,12 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
     ec.setSearchMethod (tree);
     ec.setInputCloud (cloud);
     ec.extract (cluster_indices);
-
+    
+    if(cluster_indices.size() == 0) {
+		centroids.push_back(INVALID_VEC3);
+		ROS_INFO("no clusters man");
+		continue;
+	}
 
     tf::TransformListener listener;
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.begin()+1;/*cluster_indices.end();*/ ++it)
@@ -347,7 +356,7 @@ int main (int argc, char** argv)
       clouds.push_back(green_cloud);
 
       vector<tf::Vector3> clusterCentroids = getClusters(clouds);
-
+      
       for(int i = 0; i < clusterCentroids.size(); i++) {
         bool found = false;
         for(int j = 0; j < currentPosition->neighbors.size(); j++) {

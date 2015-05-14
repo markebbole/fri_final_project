@@ -11,7 +11,7 @@ using namespace pargo;
 
 const double epsilon = 0.15;
 
-const double ROBOT_SPEED = 0.26;
+const double ROBOT_SPEED = 0.22;
 const double ROBOT_TURN_SPEED = 0.20;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
@@ -25,7 +25,7 @@ vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
 }
 
 ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int order) : 
-          approx(new FourierFA(extendBounds(bounds), FullFourierCoefficientGenerator(extendBounds(bounds).size(),order))), 
+          approx(new FourierFA(extendBounds(bounds), IndependentFourierCoefficientGenerator(extendBounds(bounds).size(),order))), 
           theta(approx->getNumBasisFunctions()),
           e(approx->getNumBasisFunctions()),
           gamma(0.99),
