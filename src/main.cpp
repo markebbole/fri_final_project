@@ -27,7 +27,8 @@
 #include <iostream>
 #include <cstdio>
 #include "ColorConversion.h"
-
+#include "Node.h"
+#include <vector>
 using namespace std;
 
 ros::Publisher velocity_pub;
@@ -106,20 +107,48 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 }
 
 double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>& s_prime) {
-
-  double reward; 
-  if(s_prime[0] < 2) {
-    reward = 100;
-  }else{
-	if(s[0] == 9) {
-		reward = 0;
-	} else {
-		reward = -10*(s_prime[0] - s[0]);
-	}
+  bool foundD = false;
+  for(int i = 0; i < s_prime.size()/2; i++) {
+    if(s_prime[i] != -1) {
+      foundD = true;
+      break;
+    }
   }
-  ROS_INFO_STREAM("reward: went from state " << s[0] << " to state " << s_prime[0] << " with reward " << reward);
+  if(!foundD) {
+    return -5; //no caps. negative reward.
+  }
 
-  return reward;
+  double reward; //otherwise see if we're within any of the markers' thresholds
+  for(int i = 0; i < s_prime.size()/2; i++) {
+    if(s_prime[i] < 2 && s_prime[i] > 0) {
+      for(int j = 0; j < currentPosition->neighbors.size(); j++) {
+        if(currentPosition->neighbors[j]->index == i) {
+          reward = currentPosition->neighbors[j]->reward;
+          currentPosition = currentPosition->neighbors[j]; //change current position;
+          return reward;
+        }
+      }
+    }
+  }
+
+  //otherwise find the shortest distance and use to calculate reward
+  double minDistance = 20.;
+  double prevDistance;
+  for(int i = 0; i < s_prime.size()/2; i++) {
+    if(s_prime[i] >= 0) {
+      if(s_prime[i] < minDistance) {
+        minDistance = s_prime[i];
+        prevDistance = s[i];
+      }
+    }
+  }
+  
+  if(prevDistance == -1) {
+    return 0;
+  } else {
+    return -(minDistance - prevDistance);
+  }
+  
 }
 
 void processDistances(vector<tf::Vector3> markers) {
@@ -135,21 +164,18 @@ void processDistances(vector<tf::Vector3> markers) {
     state[i+4] = markers[i] == NULL ? -3.5 : atan2(markers[i][0], markers[i][2]); //angle
   }
 
-  //state[0] = markers[0][2]; //right now we're just looking at the first marker's z distance
-  //state[1] = atan2(markers[0][0], markers[0][2]);
-  geometry_msgs::Twist action = controller->computeAction(state, currentPosition);
+  geometry_msgs::Twist action = controller->computeAction(state);
    
   if(!lastState.empty()) {
-    //ROS_INFO_STREAM("last command sent at " << last_command << " from state " << lastState[0]); 
-    //ROS_INFO_STREAM("distance from timestamp " << last_cloud_received_at << ": " << markers[0][2]);
+
     double reward = r(lastState,lastAction,state);
     controller->learn(lastState,lastAction,reward,state, action);
     if(reward == 100) {
-		ROS_INFO_STREAM("done with episode. about to take a nap.");
-		ros::Duration d = ros::Duration(5, 0);
-		d.sleep();
-		ROS_INFO_STREAM("done napping! :)");
-	}
+  		ROS_INFO_STREAM("done with episode. about to take a nap.");
+  		ros::Duration d = ros::Duration(5, 0);
+  		d.sleep();
+  		ROS_INFO_STREAM("done napping! :)");
+	  }
   }
    
   lastState = state;
@@ -296,7 +322,6 @@ int main (int argc, char** argv)
     r.sleep();
 
     if (new_cloud_available_flag){
-      //cloud contains a new image to process.
       new_cloud_available_flag = false; //reset this
 
       // Create the filtering object: downsample the dataset using a leaf size of 1cm
@@ -306,14 +331,9 @@ int main (int argc, char** argv)
       vg.setLeafSize (0.01f, 0.01f, 0.01f);
       vg.filter (*cloud_filtered);
       
-      
-      vector<PointerCloudT::Ptr> clouds;
-      /*for(int i = 0; i < currentPosition.neighbors.size(); i++) {
-        PointCloudT::Ptr tmp = computeNeonVoxels(currentPosition.neighbors[i], 
-          currentPosition.neighbors[i].color);
 
-        clouds.push_back(tmp);
-      }*/
+      vector<PointerCloudT::Ptr> clouds;
+
       PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff9900);
       PointCloudT::Ptr red_cloud = computeNeonVoxels(cloud_filtered, 0xff0000);
       PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0x0000ff);
@@ -325,11 +345,11 @@ int main (int argc, char** argv)
       clouds.push_back(green_cloud);
 
       vector<tf::Vector3> clusterCentroids = getClusters(clouds);
-      //currentPosition.neighbors
+
       for(int i = 0; i < clusterCentroids.size(); i++) {
         bool found = false;
-        for(int j = 0; j < currentPosition.neighbors.size(); j++) {
-          if(currentPosition.neighbors[j].index == i) {
+        for(int j = 0; j < currentPosition->neighbors.size(); j++) {
+          if(currentPosition->neighbors[j]->index == i) {
             found = true;
             break;
           }
@@ -338,13 +358,17 @@ int main (int argc, char** argv)
           clusterCentroids[i] = NULL;
         }
       }
-      /*if(clusterCentroids.size() < 1) {
-        ROS_INFO("NOT ENOUGH MARKERS");
-        //continue;
-      }*/
-
-      processDistances(clusterCentroids); //right now there's only one marker but there will be more later
+      ROS_INFO("current cluster centroids: ");
+      ROS_INFO("orange: ", clusterCentroids[0] == NULL);
+      ROS_INFO("red :   ", clusterCentroids[1] == NULL);
+      ROS_INFO("blue:   ", clusterCentroids[2] == NULL);
+      ROS_INFO("green:  ", clusterCentroids[3] == NULL);
       
+      ROS_INFO("current position: %d", currentPosition->color);
+
+
+      processDistances(clusterCentroids);
+
       pcl::toROSMsg(*neon_cloud,cloud_ros);
       
       //Set the frame ID to the first cloud we took in cause we want to replace that one

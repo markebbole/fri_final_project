@@ -38,7 +38,7 @@ ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int 
 }
 
 
-geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& state, Node* currentPosition) {
+geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& state) {
   //std::cout << "COMPUTING ACTION" << std::endl;
   //std::cout << state[0] << std::endl;
   vector<double> state_action(state.begin(), state.end());
@@ -58,6 +58,7 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
       break;
     }
   }
+
   std::cout << "are there no markers: " << noMarkers << std::endl;
   if(rand() <= epsilon * RAND_MAX) {
     //random action
@@ -166,11 +167,11 @@ void ValueLearner::learn(const vector<double>& s,const geometry_msgs::Twist& a ,
   
   theta = theta + delta * e + alpha * (v_hat_s - (theta * phi_s_v).sum()) * phi_s_v;
   
-  if(r == 100) { //reset to new episode
+  /*if(r == 100) { //reset to new episode
     for(int i = 0; i < e.size(); i++) {
 		e[i] = 0.;
     }
-  }
+  }*/
   
   
 }
