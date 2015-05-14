@@ -29,6 +29,9 @@
 #include "ColorConversion.h"
 #include "Node.h"
 #include <vector>
+
+#define INVALID_VEC3 tf::Vector3(-10, -10, -10)
+
 using namespace std;
 
 ros::Publisher velocity_pub;
@@ -160,8 +163,8 @@ void processDistances(vector<tf::Vector3> markers) {
   vector<double> state(8,0.);
   
   for(int i = 0; i < markers.size(); i++) {
-    state[i] = markers[i] == NULL ? -1 : markers[i][0]; //distance
-    state[i+4] = markers[i] == NULL ? -3.5 : atan2(markers[i][0], markers[i][2]); //angle
+    state[i] = markers[i] == INVALID_VEC3 ? -1 : markers[i][0]; //distance
+    state[i+4] = markers[i] == INVALID_VEC3 ? -3.5 : atan2(markers[i][0], markers[i][2]); //angle
   }
 
   geometry_msgs::Twist action = controller->computeAction(state);
@@ -207,7 +210,7 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
       
     if(cloud->points.size() < 20) {
       ROS_INFO("NOT ENOUGH POINTS");
-      centroids.push_back(NULL);
+      centroids.push_back(INVALID_VEC3);
       continue;
       //return centroids;
     }
@@ -301,10 +304,10 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-2., 10.); //orange
-  bounds.push_back(make_pair(-2., 10.); //red
-  bounds.push_back(make_pair(-2., 10.); //blue
-  bounds.push_back(make_pair(-2., 10.); //green
+  bounds.push_back(make_pair(-2., 10.)); //orange
+  bounds.push_back(make_pair(-2., 10.)); //red
+  bounds.push_back(make_pair(-2., 10.)); //blue
+  bounds.push_back(make_pair(-2., 10.)); //green
   bounds.push_back(make_pair(-5., 5.));
   bounds.push_back(make_pair(-5., 5.));
   bounds.push_back(make_pair(-5., 5.));
@@ -332,7 +335,7 @@ int main (int argc, char** argv)
       vg.filter (*cloud_filtered);
       
 
-      vector<PointerCloudT::Ptr> clouds;
+      vector<PointCloudT::Ptr> clouds;
 
       PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff9900);
       PointCloudT::Ptr red_cloud = computeNeonVoxels(cloud_filtered, 0xff0000);
@@ -355,21 +358,21 @@ int main (int argc, char** argv)
           }
         }
         if(!found) {
-          clusterCentroids[i] = NULL;
+          clusterCentroids[i] = INVALID_VEC3;
         }
       }
       ROS_INFO("current cluster centroids: ");
-      ROS_INFO("orange: ", clusterCentroids[0] == NULL);
-      ROS_INFO("red :   ", clusterCentroids[1] == NULL);
-      ROS_INFO("blue:   ", clusterCentroids[2] == NULL);
-      ROS_INFO("green:  ", clusterCentroids[3] == NULL);
+      ROS_INFO("orange: ", clusterCentroids[0] == INVALID_VEC3);
+      ROS_INFO("red :   ", clusterCentroids[1] == INVALID_VEC3);
+      ROS_INFO("blue:   ", clusterCentroids[2] == INVALID_VEC3);
+      ROS_INFO("green:  ", clusterCentroids[3] == INVALID_VEC3);
       
       ROS_INFO("current position: %d", currentPosition->color);
 
 
       processDistances(clusterCentroids);
 
-      pcl::toROSMsg(*neon_cloud,cloud_ros);
+      pcl::toROSMsg(*cloud,cloud_ros);
       
       //Set the frame ID to the first cloud we took in cause we want to replace that one
       cloud_ros.header.frame_id = cloud->header.frame_id;

@@ -4,7 +4,6 @@
 
 #include "ros/console.h"
 
-
 #include <valarray>
 
 using namespace std;
@@ -53,7 +52,7 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   geometry_msgs::Twist action;
   bool noMarkers = true;
   for(int i = 0; i < state.size()/2; i++) {
-    if(state[i] != NULL) {
+    if(state[i] != -1) {
       noMarkers = false;
       break;
     }
