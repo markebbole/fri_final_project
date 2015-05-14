@@ -100,7 +100,7 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 
       hsv c1 = rgb2hsv(my_rgb);
       hsv c2 = rgb2hsv(test_rgb);
-        // Look for mostly neon value points
+      // Look for mostly neon value points
       if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
         temp_neon_cloud->push_back(in->points[i]);
         ++count;
@@ -125,7 +125,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
 
   double reward; //otherwise see if we're within any of the markers' thresholds
   for(int i = 0; i < s_prime.size()/2; i++) {
-    if(s_prime[i] < 2 && s_prime[i] > 0) {
+    if(s_prime[i] < 1.2 && s_prime[i] > 0) {
       for(int j = 0; j < currentPosition->neighbors.size(); j++) {
         if(currentPosition->neighbors[j]->index == i) {
           reward = currentPosition->neighbors[j]->reward;
@@ -176,12 +176,12 @@ void processDistances(vector<tf::Vector3> markers) {
     double reward = r(lastState,lastAction,state);
     ROS_INFO("received reward of %f", reward);
     controller->learn(lastState,lastAction,reward,state, action);
-    if(reward == 100) {
-  		ROS_INFO_STREAM("done with episode. about to take a nap.");
-  		ros::Duration d = ros::Duration(5, 0);
-  		d.sleep();
-  		ROS_INFO_STREAM("done napping! :)");
-	  }
+    if(currentPosition == endPosition) {
+      ROS_INFO("done with episode. taking a 20 second nap");
+      ros::Duration d = ros::Duration(20, 0);
+      d.sleep();
+      ROS_INFO("done napping! :)");
+    }
   }
    
   lastState = state;

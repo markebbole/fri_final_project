@@ -14,7 +14,7 @@ struct ValueLearner : public LearningController{
   
   void learn(const std::vector<double>& s,const geometry_msgs::Twist& a , double r, 
                                   const std::vector<double>&s_prime,const geometry_msgs::Twist& a_prime );
-  
+  void resetEligibilityTrace();
 private:
   pargo::LinearFA *approx;
   std::valarray<double> theta;
