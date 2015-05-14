@@ -11,8 +11,6 @@ using namespace pargo;
 
 const double epsilon = 0.15;
 
-const double max_velocity = 3.;
-const double min_velocity = -3.;
 const double ROBOT_SPEED = 0.26;
 const double ROBOT_TURN_SPEED = 0.20;
 
@@ -58,7 +56,7 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
     }
   }
 
-  std::cout << "are there no markers: " << noMarkers << std::endl;
+  std::cout << "are there no markers?: " << noMarkers << std::endl;
   if(rand() <= epsilon * RAND_MAX) {
     //random action
     double v = rand();
@@ -89,7 +87,6 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
         
         if(value > best_value ) {
           best_value = value;
-          //action.linear.x = linear;
           bestLinear = linear;
         }
     }
