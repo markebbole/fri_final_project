@@ -42,7 +42,7 @@ LearningController *controller;
 vector<double> lastState;
 geometry_msgs::Twist lastAction;
 
-double rate = .9;
+double rate = .6;
 ros::Time last_command;
 ros::Time last_cloud_received_at;
 
@@ -69,10 +69,11 @@ void cloud_sub(const sensor_msgs::PointCloud2ConstPtr& msg) {
 }
 
 PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
+  ROS_INFO("computing filter for color: %d", color);
   int THRESHOLD_H = 15;
   int THRESHOLD_S = 20;
   int THRESHOLD_V = 20;
-
+  int count = 0; //for debugging purposes
   rgb my_rgb;
   rgb test_rgb;
   //Point Cloud to store out neon cap
@@ -83,6 +84,10 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
   int filterR = (col >> 16);
   int filterG = (col >> 8) & 0xff;
   int filterB = col & 0xff;
+  
+  test_rgb.r = filterR;
+  test_rgb.g = filterG;
+  test_rgb.b = filterB;
 
   for (int i = 0; i < in->points.size(); i++) {
       r = in->points[i].r;
@@ -93,18 +98,15 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
       my_rgb.g = g;
       my_rgb.b = b;
 
-      test_rgb.r = filterR;
-      test_rgb.g = filterG;
-      test_rgb.b = filterB;
-        
       hsv c1 = rgb2hsv(my_rgb);
       hsv c2 = rgb2hsv(test_rgb);
         // Look for mostly neon value points
       if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
         temp_neon_cloud->push_back(in->points[i]);
+        ++count;
       }
-      
   }
+  ROS_INFO("found %d points for that color", count);
 
   return temp_neon_cloud;
 }
@@ -172,6 +174,7 @@ void processDistances(vector<tf::Vector3> markers) {
   if(!lastState.empty()) {
 
     double reward = r(lastState,lastAction,state);
+    ROS_INFO("received reward of %f", reward);
     controller->learn(lastState,lastAction,reward,state, action);
     if(reward == 100) {
   		ROS_INFO_STREAM("done with episode. about to take a nap.");
@@ -209,7 +212,7 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
       
       
     if(cloud->points.size() < 20) {
-      ROS_INFO("NOT ENOUGH POINTS");
+      //ROS_INFO("NOT ENOUGH POINTS");
       centroids.push_back(INVALID_VEC3);
       continue;
       //return centroids;
@@ -228,10 +231,6 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
     ec.setInputCloud (cloud);
     ec.extract (cluster_indices);
 
-    /*  if(cluster_indices.size() < 1) {
-      ROS_INFO("NOT ENOUGH HATS!!!");
-      continue;
-    }*/
 
     tf::TransformListener listener;
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.begin()+1;/*cluster_indices.end();*/ ++it)
@@ -242,7 +241,6 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
       cloud_cluster->width = cloud_cluster->points.size ();
       cloud_cluster->height = 1;
       cloud_cluster->is_dense = true;
-      //std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
 
       //compute a centroid for each found cluster.
       Eigen::Vector4f centroid;
@@ -277,7 +275,7 @@ int main (int argc, char** argv)
   Node* p2 = new Node(100, 0xff0000, 1);
   Node* p3 = new Node(-100, 0x0000ff, 2);
   Node* p4 = new Node(500, 0x00ff00, 3);
-
+  
   p->addNeighbor(p2);
 
   p2->addNeighbor(p);
@@ -290,6 +288,7 @@ int main (int argc, char** argv)
   
   currentPosition = p;
   endPosition = p4;
+  ROS_INFO("finished creating maze nodes");
 
   // Initialize ROS
   ros::init (argc, argv, "linear_robot");
@@ -313,10 +312,10 @@ int main (int argc, char** argv)
   bounds.push_back(make_pair(-5., 5.));
   bounds.push_back(make_pair(-5., 5.));
     
-  controller = new ValueLearner(bounds,2);
+  controller = new ValueLearner(bounds,3);
 
   //refresh rate
-  double ros_rate = 12.0;
+  double ros_rate = 6.0;
   ros::Rate r(ros_rate);
   
   while (ros::ok())
@@ -361,11 +360,11 @@ int main (int argc, char** argv)
           clusterCentroids[i] = INVALID_VEC3;
         }
       }
-      ROS_INFO("current cluster centroids: ");
-      ROS_INFO("orange: ", clusterCentroids[0] == INVALID_VEC3);
-      ROS_INFO("red :   ", clusterCentroids[1] == INVALID_VEC3);
-      ROS_INFO("blue:   ", clusterCentroids[2] == INVALID_VEC3);
-      ROS_INFO("green:  ", clusterCentroids[3] == INVALID_VEC3);
+      ROS_INFO("current cluster centroids. if true, valid seen distance");
+      ROS_INFO("orange: %d", clusterCentroids[0] != INVALID_VEC3);
+      ROS_INFO("red :   %d", clusterCentroids[1] != INVALID_VEC3);
+      ROS_INFO("blue:   %d", clusterCentroids[2] != INVALID_VEC3);
+      ROS_INFO("green:  %d", clusterCentroids[3] != INVALID_VEC3);
       
       ROS_INFO("current position: %d", currentPosition->color);
 
