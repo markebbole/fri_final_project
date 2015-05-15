@@ -42,7 +42,7 @@ LearningController *controller;
 vector<double> lastState;
 geometry_msgs::Twist lastAction;
 
-double rate = .9;
+double rate = .8;
 ros::Time last_command;
 ros::Time last_cloud_received_at;
 
@@ -101,27 +101,28 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
       my_rgb.b = b;
 
       hsv c1 = rgb2hsv(my_rgb);
-      hsv c2 = rgb2hsv(test_rgb);
+      //hsv c2 = rgb2hsv(test_rgb);
 
       switch(color) {
 		  case 0xff00: //green
 		    //ROS_INFO("checking green");
-		    if(g > 150 && (r + b) < 220) {
+		    if(c1.h > 100 && c1.h < 140 && c1.s > 60 && c1.v > 60) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
 		  case 0xff1493: //pink
-		    if (r > 230 && g < 105 && b < 200) {
+		    if (c1.h > 300 && c1.h < 330 && c1.s > 65 && c1.v > 75) {
               temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
-		  case 0x0000ff: //blue
-		    if(b > 150 && (g + r) < 220) {
+		  case 0xff0000: //red
+		    if(c1.h < 20 || c1.h > 350 && c1.s > 80 && c1.v > 65) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
-		  case 0xff9900: //orange
-		    if(r > 200 && g > 30 && b < 50) {
+
+		  case 0xffff00: //yellow
+		    if(c1.h > 50 && c1.h < 70 && c1.s > 70 && c1.v > 65) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
@@ -150,7 +151,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
     }
   }
   if(!foundD) {
-    return -1; //no caps. negative reward.
+    return -3.5; //no caps. negative reward.
   }
 
   double reward; //otherwise see if we're within any of the markers' thresholds
@@ -170,7 +171,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
   }
 
   //otherwise find the shortest distance and use to calculate reward
-  double minDistance = 20.;
+  double minDistance = 100.;
   double prevDistance;
   for(int i = 0; i < s_prime.size()/2; i++) {
 	ROS_INFO("DISTANCE %d: %f", i, s_prime[i]);
@@ -312,9 +313,9 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
 int main (int argc, char** argv)
 {
 
-  Node* p = new Node(-100, 0xff9900, 0); //orange 
-  Node* p2 = new Node(100, 0x00ff00, 1); //green
-  Node* p3 = new Node(-100, 0x0000ff, 2); //blue
+  Node* p = new Node(0, 0xff0000, 0); //red = beginning
+  Node* p2 = new Node(200, 0x00ff00, 1); //green = midpoint
+  Node* p3 = new Node(0, 0xffff00, 2); //yellow = bad
   Node* p4 = new Node(500, 0xff1493, 3); //pink = goal
   
   p->addNeighbor(p2);
@@ -361,6 +362,7 @@ int main (int argc, char** argv)
   
   while (ros::ok())
   {
+	ROS_INFO("HIII");
     ros::spinOnce();
     r.sleep();
 
@@ -377,9 +379,9 @@ int main (int argc, char** argv)
 
       vector<PointCloudT::Ptr> clouds;
 
-      PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff9900);
+      PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff0000);
       PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00);
-      PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0x0000ff);
+      PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0xffff00);
       PointCloudT::Ptr pink_cloud = computeNeonVoxels(cloud_filtered, 0xff1493);
 
       clouds.push_back(orange_cloud);
@@ -415,7 +417,7 @@ int main (int argc, char** argv)
       processDistances(clusterCentroids);
 
       pcl::toROSMsg(*cloud,cloud_ros);
-      
+      ROS_INFO("hello");
       //Set the frame ID to the first cloud we took in cause we want to replace that one
       cloud_ros.header.frame_id = cloud->header.frame_id;
       cloud_pub.publish(cloud_ros);
