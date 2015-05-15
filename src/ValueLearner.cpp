@@ -9,14 +9,14 @@
 using namespace std;
 using namespace pargo;
 
-const double epsilon = 0.15;
+const double epsilon = 0.25;
 
 const double ROBOT_SPEED = 0.22;
 const double ROBOT_TURN_SPEED = 0.20;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());
-
+  //push in bounds for linear and angular speed. pushing in 2x the speed to give the approximator some room
   state_action_bounds.push_back(make_pair(-2*ROBOT_SPEED,2*ROBOT_SPEED));
 
   state_action_bounds.push_back(make_pair(-2*ROBOT_TURN_SPEED, 2*ROBOT_TURN_SPEED));
@@ -34,13 +34,17 @@ ValueLearner::ValueLearner( const std::vector<BoundsPair> &bounds, unsigned int 
   ROS_INFO_STREAM("The approximator has " << approx->getNumBasisFunctions() << " features");
 }
 
+void ValueLearner::resetEligibilityTrace() {
+  for(int i = 0; i < e.size(); i++) {
+    e[i] = 0.;
+  }
+}
+
 
 geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& state) {
-  //std::cout << "COMPUTING ACTION" << std::endl;
-  //std::cout << state[0] << std::endl;
   vector<double> state_action(state.begin(), state.end());
   state_action.reserve(state_action.size() + 2);
-  state_action.push_back(-ROBOT_SPEED); //initial action
+  state_action.push_back(-ROBOT_SPEED); //initial action to test
   state_action.push_back(0.);
   double &linear = state_action[state_action.size() -2];
   double &angular = state_action[state_action.size() - 1];
@@ -48,6 +52,7 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
   vector<double> theta_v(&theta[0],(&theta[0])+theta.size());
   
   geometry_msgs::Twist action;
+  //if all distance states are -1, there are no valid markers in the scene.
   bool noMarkers = true;
   for(int i = 0; i < state.size()/2; i++) {
     if(state[i] != -1) {
@@ -55,12 +60,13 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
       break;
     }
   }
-
+  
   std::cout << "are there no markers?: " << noMarkers << std::endl;
   if(rand() <= epsilon * RAND_MAX) {
     //random action
     double v = rand();
     double v2 = rand();
+    //if no markers, only pick a random rotation.
     if((v / RAND_MAX) > .5 && !noMarkers) {
   		action.linear.x = (v2 / RAND_MAX) > .5 ? ROBOT_SPEED : -ROBOT_SPEED;
   	} else {
@@ -74,7 +80,6 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
     action.linear.x = linear;
     action.angular.z = angular;
   
-
     double best_value = approx->value(theta_v,state_action);
   
     bool angularMove = false;
@@ -90,15 +95,18 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
           bestLinear = linear;
         }
     }
-    linear = 0.;
-    if(noMarkers) {
+    linear = 0.; //reset linear to 0 so that we can test rotation and linear movement independently
+
+    //if there are no markers, we want to restrict actions to rotation only, so re-evaluate best_value
+    if(noMarkers) { 
       action.linear.x = 0.;
       linear = 0.;
       angular = -ROBOT_TURN_SPEED;
+      action.angular.z = angular;
       best_value = approx->value(theta_v, state_action);
       angularMove = true;
     }
-
+    //go through turning actions, testing values
     for(angular = -ROBOT_TURN_SPEED ;angular < ROBOT_TURN_SPEED+.1; angular += 2*ROBOT_TURN_SPEED) {
         double value = approx->value(theta_v,state_action);
         values << linear << " " << angular << ": " << value << " ";
@@ -110,8 +118,8 @@ geometry_msgs::Twist ValueLearner::computeAction(const std::vector<double>& stat
           angularMove = true;
         }
     }
-    
-    if(!angularMove) {
+    //we're not doing an angularMove, so set linear and reset angular.
+    if(!angularMove) { 
 		  action.linear.x = bestLinear;
 		  action.angular.z = 0.;
 	  }
