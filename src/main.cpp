@@ -90,7 +90,7 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
   test_rgb.r = filterR;
   test_rgb.g = filterG;
   test_rgb.b = filterB;
-
+  //int count = 0;
   for (int i = 0; i < in->points.size(); i++) {
       r = in->points[i].r;
       g = in->points[i].g;
@@ -106,23 +106,27 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
       switch(color) {
 		  case 0xff00: //green
 		    //ROS_INFO("checking green");
-		    if(c1.h > 100 && c1.h < 140 && c1.s > 60 && c1.v > 60) {
+		    //ROS_INFO("h s v: %f %f %f", c1.h, c1.s, c1.v);
+		    if(c1.h > 80 && c1.h < 120 && c1.s > .5 && c1.v > 50) {
 				temp_neon_cloud->push_back(in->points[i]);
+				
+				count++;
 			}
 			break;
 		  case 0xff1493: //pink
-		    if (c1.h > 300 && c1.h < 330 && c1.s > 65 && c1.v > 75) {
+		    //ROS_INFO("h s v: %f %f %f", c1.h, c1.s, c1.v);
+		    if (c1.h > 290 && c1.h < 330 && c1.s > .5 && c1.v > 50) {
               temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
 		  case 0xff0000: //red
-		    if(c1.h < 20 || c1.h > 350 && c1.s > 80 && c1.v > 65) {
+		    if(c1.h < 20 || c1.h > 350 && c1.s > 0 && c1.v > 65) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
 
 		  case 0xffff00: //yellow
-		    if(c1.h > 50 && c1.h < 70 && c1.s > 70 && c1.v > 65) {
+		    if(c1.h > 50 && c1.h < 70 && c1.s > 0 && c1.v > 50) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
@@ -314,9 +318,9 @@ int main (int argc, char** argv)
 {
 
   Node* p = new Node(0, 0xff0000, 0); //red = beginning
-  Node* p2 = new Node(200, 0x00ff00, 1); //green = midpoint
+  Node* p2 = new Node(200, 0xff1493, 1); //pink = midpoint
   Node* p3 = new Node(0, 0xffff00, 2); //yellow = bad
-  Node* p4 = new Node(500, 0xff1493, 3); //pink = goal
+  Node* p4 = new Node(500, 0x00ff00, 3); //pink = goal
   
   p->addNeighbor(p2);
 
@@ -380,9 +384,9 @@ int main (int argc, char** argv)
       vector<PointCloudT::Ptr> clouds;
 
       PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff0000);
-      PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00);
+      PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0xff1493);
       PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0xffff00);
-      PointCloudT::Ptr pink_cloud = computeNeonVoxels(cloud_filtered, 0xff1493);
+      PointCloudT::Ptr pink_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00);
 
       clouds.push_back(orange_cloud);
       clouds.push_back(green_cloud);
