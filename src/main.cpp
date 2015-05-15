@@ -361,7 +361,7 @@ int main (int argc, char** argv)
   
   while (ros::ok())
   {
-	ROS_INFO("HIII");
+	//ROS_INFO("HIII");
     ros::spinOnce();
     r.sleep();
 
@@ -416,7 +416,7 @@ int main (int argc, char** argv)
       processDistances(clusterCentroids);
 
       pcl::toROSMsg(*cloud,cloud_ros);
-      ROS_INFO("hello");
+     // ROS_INFO("hello");
       //Set the frame ID to the first cloud we took in cause we want to replace that one
       cloud_ros.header.frame_id = cloud->header.frame_id;
       cloud_pub.publish(cloud_ros);
