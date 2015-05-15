@@ -104,23 +104,23 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
       hsv c2 = rgb2hsv(test_rgb);
 
       switch(color) {
-		  case 0xff00:
+		  case 0xff00: //green
 		    //ROS_INFO("checking green");
 		    if(g > 150 && (r + b) < 220) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
-		  case 0xff1493:
+		  case 0xff1493: //pink
 		    if (r > 230 && g < 105 && b < 200) {
               temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
-		  case 0x0000ff:
+		  case 0x0000ff: //blue
 		    if(b > 150 && (g + r) < 220) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
-		  case 0xff9900:
+		  case 0xff9900: //orange
 		    if(r > 200 && g > 30 && b < 50) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
