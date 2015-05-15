@@ -11,8 +11,8 @@ using namespace pargo;
 
 const double epsilon = 0.25;
 
-const double ROBOT_SPEED = 0.22;
-const double ROBOT_TURN_SPEED = 0.20;
+const double ROBOT_SPEED = 0.28;
+const double ROBOT_TURN_SPEED = 0.28;
 
 vector<BoundsPair> extendBounds(const std::vector<BoundsPair> &bounds) {
   vector<BoundsPair> state_action_bounds(bounds.begin(),bounds.end());

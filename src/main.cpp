@@ -42,7 +42,7 @@ LearningController *controller;
 vector<double> lastState;
 geometry_msgs::Twist lastAction;
 
-double rate = .9;
+double rate = .8;
 ros::Time last_command;
 ros::Time last_cloud_received_at;
 
@@ -121,7 +121,7 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 			}
 			break;
 		  case 0xff9900:
-		    if(r > 200 && g > 30 && b < 50) {
+		    if(r > 150 && g < 90 && b < 200) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
@@ -150,7 +150,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
     }
   }
   if(!foundD) {
-    return -1; //no caps. negative reward.
+    return -4; //no caps. negative reward.
   }
 
   double reward; //otherwise see if we're within any of the markers' thresholds
@@ -312,9 +312,9 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
 int main (int argc, char** argv)
 {
 
-  Node* p = new Node(-100, 0xff9900, 0); //orange 
-  Node* p2 = new Node(100, 0x00ff00, 1); //green
-  Node* p3 = new Node(-100, 0x0000ff, 2); //blue
+  Node* p = new Node(0, 0xff, 0); //orange 
+  Node* p2 = new Node(200, 0xff9900, 1); //green
+  Node* p3 = new Node(0, 0x00ff00, 2); //blue
   Node* p4 = new Node(500, 0xff1493, 3); //pink = goal
   
   p->addNeighbor(p2);
@@ -361,6 +361,7 @@ int main (int argc, char** argv)
   
   while (ros::ok())
   {
+	ROS_INFO("HIII");
     ros::spinOnce();
     r.sleep();
 
@@ -377,9 +378,9 @@ int main (int argc, char** argv)
 
       vector<PointCloudT::Ptr> clouds;
 
-      PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff9900);
-      PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00);
-      PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0x0000ff);
+      PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff);
+      PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0xff9900);
+      PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00);
       PointCloudT::Ptr pink_cloud = computeNeonVoxels(cloud_filtered, 0xff1493);
 
       clouds.push_back(orange_cloud);
@@ -415,7 +416,7 @@ int main (int argc, char** argv)
       processDistances(clusterCentroids);
 
       pcl::toROSMsg(*cloud,cloud_ros);
-      
+      ROS_INFO("hello");
       //Set the frame ID to the first cloud we took in cause we want to replace that one
       cloud_ros.header.frame_id = cloud->header.frame_id;
       cloud_pub.publish(cloud_ros);
