@@ -107,7 +107,7 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 		  case 0xff00: //green
 		    //ROS_INFO("checking green");
 		    //ROS_INFO("h s v: %f %f %f", c1.h, c1.s, c1.v);
-		    if(c1.h > 80 && c1.h < 120 && c1.s > .5 && c1.v > 50) {
+		    if(c1.h > 80 && c1.h < 120 && c1.s > .65 && c1.v > 60) {
 				temp_neon_cloud->push_back(in->points[i]);
 				
 				count++;
@@ -115,18 +115,18 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 			break;
 		  case 0xff1493: //pink
 		    //ROS_INFO("h s v: %f %f %f", c1.h, c1.s, c1.v);
-		    if (c1.h > 290 && c1.h < 330 && c1.s > .5 && c1.v > 50) {
+		    if (c1.h > 290 && c1.h < 330 && c1.s > .6 && c1.v > 60) {
               temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
 		  case 0xff0000: //red
-		    if(c1.h < 20 || c1.h > 350 && c1.s > .5 && c1.v > 65) {
+		    if((c1.h < 5 || c1.h > 355) && c1.s > .8 && c1.v > 60) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
 
 		  case 0xffff00: //yellow
-		    if(c1.h > 50 && c1.h < 70 && c1.s > .5 && c1.v > 60) {
+		    if(c1.h > 50 && c1.h < 70 && c1.s > .8 && c1.v > 70) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
