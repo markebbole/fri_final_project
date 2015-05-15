@@ -120,13 +120,13 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 			}
 			break;
 		  case 0xff0000: //red
-		    if(c1.h < 20 || c1.h > 350 && c1.s > 0 && c1.v > 65) {
+		    if(c1.h < 20 || c1.h > 350 && c1.s > .5 && c1.v > 65) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
 
 		  case 0xffff00: //yellow
-		    if(c1.h > 50 && c1.h < 70 && c1.s > 0 && c1.v > 50) {
+		    if(c1.h > 50 && c1.h < 70 && c1.s > .5 && c1.v > 60) {
 				temp_neon_cloud->push_back(in->points[i]);
 			}
 			break;
