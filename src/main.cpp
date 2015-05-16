@@ -52,6 +52,7 @@ typedef pcl::PointCloud<PointT> PointCloudT;
 bool new_cloud_available_flag = false;
 
 Node* currentPosition;
+Node* startPosition;
 Node* endPosition;
 
 // General point cloud to store the whole image
@@ -105,41 +106,30 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 
       switch(color) {
 		  case 0xff00: //green
-		    //ROS_INFO("checking green");
-		    //ROS_INFO("h s v: %f %f %f", c1.h, c1.s, c1.v);
 		    if(c1.h > 80 && c1.h < 120 && c1.s > .65 && c1.v > 60) {
-				temp_neon_cloud->push_back(in->points[i]);
-				
-				count++;
-			}
+				  temp_neon_cloud->push_back(in->points[i]);
+				  count++;
+			  }
 			break;
 		  case 0xff1493: //pink
-		    //ROS_INFO("h s v: %f %f %f", c1.h, c1.s, c1.v);
 		    if (c1.h > 290 && c1.h < 330 && c1.s > .6 && c1.v > 60) {
-              temp_neon_cloud->push_back(in->points[i]);
-			}
+          temp_neon_cloud->push_back(in->points[i]);
+			  }
 			break;
 		  case 0xff0000: //red
 		    if((c1.h < 5 || c1.h > 355) && c1.s > .8 && c1.v > 60) {
-				temp_neon_cloud->push_back(in->points[i]);
-			}
+				  temp_neon_cloud->push_back(in->points[i]);
+			  }
 			break;
 
 		  case 0xffff00: //yellow
 		    if(c1.h > 50 && c1.h < 70 && c1.s > .8 && c1.v > 70) {
-				temp_neon_cloud->push_back(in->points[i]);
-			}
+				  temp_neon_cloud->push_back(in->points[i]);
+			  }
 			break;
 		  default:
 		  break;
 	 }
-		    
-			
-      // Look for mostly neon value points
-      /*if (abs(c2.h - c1.h) < THRESHOLD_H && abs(c2.s - c1.s) < THRESHOLD_S && abs(c2.v - c1.v) < THRESHOLD_V) {
-        temp_neon_cloud->push_back(in->points[i]);
-        ++count;
-      }*/
   }
   //ROS_INFO("found %d points for that color", count);
 
@@ -147,7 +137,7 @@ PointCloudT::Ptr computeNeonVoxels(PointCloudT::Ptr in, int color) {
 }
 
 double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>& s_prime) {
-  bool foundD = false;
+  bool foundD = false; //found a valid distance
   for(int i = 0; i < s_prime.size()/2; i++) {
     if(s_prime[i] != -1) {
       foundD = true;
@@ -160,10 +150,10 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
 
   double reward; //otherwise see if we're within any of the markers' thresholds
   for(int i = 0; i < s_prime.size()/2; i++) {
-    if(s_prime[i] < 1.5 && s_prime[i] > 0) {
+    if(s_prime[i] < 1.5 && s_prime[i] > 0) { //threshold distance = 1.5
       for(int j = 0; j < currentPosition->neighbors.size(); j++) {
         if(currentPosition->neighbors[j]->index == i) {
-		  ROS_INFO("WITHIN RANGE OF COLOR: %02X", currentPosition->neighbors[j]->color);
+		      ROS_INFO("WITHIN RANGE OF COLOR: %02X", currentPosition->neighbors[j]->color);
           reward = currentPosition->neighbors[j]->reward;
           //ROS_INFO("CURRENTPOSTION->NEIGHBORS[J]->COLOR
           currentPosition = currentPosition->neighbors[j]; //change current position;
@@ -187,7 +177,7 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
     }
   }
   
-  if(prevDistance == -1) {
+  if(prevDistance == -1) { //went from invalid state to valid state
     return 0;
   } else {
     return -10*(minDistance - prevDistance);
@@ -197,7 +187,6 @@ double r(const vector<double>& s, geometry_msgs::Twist& a,  const vector<double>
 
 void processDistances(vector<tf::Vector3> markers) {
   //wait for the effect of our action
-  //ROS_INFO("before wait");
   if((ros::Time::now() - last_command).toSec() < 1./rate) {
     return; 
   }
@@ -218,8 +207,10 @@ void processDistances(vector<tf::Vector3> markers) {
     controller->learn(lastState,lastAction,reward,state, action);
     
     if(currentPosition == endPosition) {
-      ROS_INFO("done with episode. taking a 20 second nap");
-      ros::Duration d = ros::Duration(20, 0);
+      ROS_INFO("done with episode. taking a 5 second nap");
+      controller->reset();
+      currentPosition = startPosition;
+      ros::Duration d = ros::Duration(5, 0);
       d.sleep();
       ROS_INFO("done napping! :)");
     }
@@ -316,11 +307,11 @@ vector<tf::Vector3> getClusters(vector<PointCloudT::Ptr> clouds) {
 }
 int main (int argc, char** argv)
 {
-
-  Node* p = new Node(0, 0xff0000, 0); //red = beginning
+  //-----------------construct the maze graph ------------------------
+  Node* p = new Node(-10, 0xff0000, 0); //red = beginning
   Node* p2 = new Node(200, 0xff1493, 1); //pink = midpoint
-  Node* p3 = new Node(0, 0xffff00, 2); //yellow = bad
-  Node* p4 = new Node(500, 0x00ff00, 3); //pink = goal
+  Node* p3 = new Node(-10, 0xffff00, 2); //yellow = bad
+  Node* p4 = new Node(500, 0x00ff00, 3); //green = goal
   
   p->addNeighbor(p2);
 
@@ -333,6 +324,7 @@ int main (int argc, char** argv)
   p4->addNeighbor(p2);
   
   currentPosition = p;
+  startPosition = p;
   endPosition = p4;
   ROS_INFO("finished creating maze nodes");
 
@@ -349,9 +341,9 @@ int main (int argc, char** argv)
 
   velocity_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
   vector<pargo::BoundsPair> bounds;
-  bounds.push_back(make_pair(-2., 10.)); //orange
   bounds.push_back(make_pair(-2., 10.)); //red
-  bounds.push_back(make_pair(-2., 10.)); //blue
+  bounds.push_back(make_pair(-2., 10.)); //pink
+  bounds.push_back(make_pair(-2., 10.)); //yellow
   bounds.push_back(make_pair(-2., 10.)); //green
   bounds.push_back(make_pair(-5., 5.));
   bounds.push_back(make_pair(-5., 5.));
@@ -383,15 +375,15 @@ int main (int argc, char** argv)
 
       vector<PointCloudT::Ptr> clouds;
 
-      PointCloudT::Ptr orange_cloud = computeNeonVoxels(cloud_filtered, 0xff0000);
-      PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0xff1493);
-      PointCloudT::Ptr blue_cloud = computeNeonVoxels(cloud_filtered, 0xffff00);
-      PointCloudT::Ptr pink_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00);
+      PointCloudT::Ptr red_cloud = computeNeonVoxels(cloud_filtered, 0xff0000); //red 
+      PointCloudT::Ptr pink_cloud = computeNeonVoxels(cloud_filtered, 0xff1493); //pink
+      PointCloudT::Ptr yellow_cloud = computeNeonVoxels(cloud_filtered, 0xffff00); //yellow
+      PointCloudT::Ptr green_cloud = computeNeonVoxels(cloud_filtered, 0x00ff00); //green
 
-      clouds.push_back(orange_cloud);
-      clouds.push_back(green_cloud);
-      clouds.push_back(blue_cloud);
+      clouds.push_back(red_cloud);
       clouds.push_back(pink_cloud);
+      clouds.push_back(yellow_cloud);
+      clouds.push_back(green_cloud);
 
       vector<tf::Vector3> clusterCentroids = getClusters(clouds);
       
@@ -407,16 +399,6 @@ int main (int argc, char** argv)
           clusterCentroids[i] = INVALID_VEC3;
         }
       }
-      //ROS_INFO("current cluster centroids. if true, valid seen distance");
-      /*ROS_INFO("orange: %d", clusterCentroids[0] != INVALID_VEC3);
-      ROS_INFO("green :   %d", clusterCentroids[1] != INVALID_VEC3);
-      ROS_INFO("blue:   %d", clusterCentroids[2] != INVALID_VEC3);
-      ROS_INFO("pink:  %d", clusterCentroids[3] != INVALID_VEC3);*/
-      
-      //ROS_INFO("current position: %d", currentPosition->color);
-      /*for(int i = 0; i < clusterCentroids.size(); i++) {
-		  ROS_INFO("%i: %f %f %f", i, clusterCentroids[i][0], clusterCentroids[i][1], clusterCentroids[i][2]);
-      }*/
 
       processDistances(clusterCentroids);
 
