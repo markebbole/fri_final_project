@@ -208,7 +208,7 @@ void processDistances(vector<tf::Vector3> markers) {
     
     if(currentPosition == endPosition) {
       ROS_INFO("done with episode. taking a 5 second nap");
-      controller->reset();
+      controller->resetEligibilityTrace();
       currentPosition = startPosition;
       ros::Duration d = ros::Duration(5, 0);
       d.sleep();

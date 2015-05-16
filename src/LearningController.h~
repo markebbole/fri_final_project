@@ -13,7 +13,7 @@ struct LearningController {
  virtual void learn(const std::vector<double>& s,const geometry_msgs::Twist& a , double r, 
                                   const std::vector<double>&s_prime,const geometry_msgs::Twist& a_prime )=0;
  
- virtual void resetEligibilityTrace() = 0;
+ virtual void resetEligibilityTrace(); 
  virtual ~LearningController() {};
  
 };
